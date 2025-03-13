@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Gothic Stopwatch & Todo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&family=Crimson+Text:wght@400;700&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <div class="container">
+      <h1 class="gothic-title">Gothic Timekeeper</h1>
+      
+      <div class="stopwatch-container">
+        <div class="time-display">00:00:00</div>
+        <div class="controls">
+          <button id="startBtn" class="gothic-btn">Start</button>
+          <button id="stopBtn" class="gothic-btn">Stop</button>
+          <button id="resetBtn" class="gothic-btn">Reset</button>
+        </div>
+      </div>
+
+      <div class="todo-container">
+        <h2 class="gothic-subtitle">Tasks of the Night</h2>
+        <div class="todo-input">
+          <input type="text" id="todoInput" placeholder="Enter a new task...">
+          <button id="addTodo" class="gothic-btn">Add</button>
+        </div>
+        <ul id="todoList" class="todo-list">
+          <!-- Todo items will be added here dynamically -->
+        </ul>
+      </div>
+    </div>
+
+    <script>
+      // Stopwatch functionality
+      let time = 0;
+      let intervalId = null;
+      const timeDisplay = document.querySelector('.time-display');
+      const startBtn = document.getElementById('startBtn');
+      const stopBtn = document.getElementById('stopBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      const container = document.querySelector('.container');
+      const todoContainer = document.querySelector('.todo-container');
+      const title = document.querySelector('.gothic-title');
+
+      function updateDisplay() {
+        const hours = Math.floor(time / 3600);
+        const minutes = Math.floor((time % 3600) / 60);
+        const seconds = time % 60;
+        timeDisplay.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+      }
+
+      function enterFullScreen() {
+        container.classList.add('fullscreen');
+        todoContainer.style.display = 'none';
+        title.style.display = 'none';
+        startBtn.style.display = 'none';
+        resetBtn.style.display = 'none';
+        timeDisplay.classList.add('fullscreen-timer');
+      }
+
+      function exitFullScreen() {
+        container.classList.remove('fullscreen');
+        todoContainer.style.display = 'block';
+        title.style.display = 'block';
+        startBtn.style.display = 'block';
+        resetBtn.style.display = 'block';
+        timeDisplay.classList.remove('fullscreen-timer');
+      }
+
+      startBtn.addEventListener('click', () => {
+        if (!intervalId) {
+          intervalId = setInterval(() => {
+            time++;
+            updateDisplay();
+          }, 1000);
+          enterFullScreen();
+        }
+      });
+
+      stopBtn.addEventListener('click', () => {
+        clearInterval(intervalId);
+        intervalId = null;
+        exitFullScreen();
+      });
+
+      resetBtn.addEventListener('click', () => {
+        clearInterval(intervalId);
+        intervalId = null;
+        time = 0;
+        updateDisplay();
+        exitFullScreen();
+      });
+
+      // Todo list functionality
+      const todoInput = document.getElementById('todoInput');
+      const addTodoBtn = document.getElementById('addTodo');
+      const todoList = document.getElementById('todoList');
+
+      function addTodo() {
+        const todoText = todoInput.value.trim();
+        if (todoText) {
+          const li = document.createElement('li');
+          li.innerHTML = `
+            <span>${todoText}</span>
+            <button class="delete-btn">×</button>
+          `;
+          todoList.appendChild(li);
+          todoInput.value = '';
+
+          li.querySelector('.delete-btn').addEventListener('click', () => {
+            li.remove();
+          });
+        }
+      }
+
+      addTodoBtn.addEventListener('click', addTodo);
+      todoInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          addTodo();
+        }
+      });
+    </script>
+  </body>
+</html>
