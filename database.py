@@ -11,8 +11,7 @@ cursor.execute(''' CREATE TABLE IF NOT EXISTS tasks (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 )''')
 
-cursor.execute('''
-CREATE TABLE IF NOT EXISTS time_logs (
+cursor.execute(''' CREATE TABLE IF NOT EXISTS time_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     task_id INTEGER NOT NULL,
     start_time TIMESTAMP NOT NULL,
@@ -33,6 +32,32 @@ def add_task(task):
     connection.commit()
     connection.close()
     return task_id
+
+def toggle_task(task_id):
+    connection = sqlite3.connect('database.db')
+    cursor = connection.cursor()
+
+    cursor.execute('UPDATE tasks SET completed = NOT completed WHERE id = ?', (task_id,))
+    connection.commit() 
+    connection.close()
+
+def get_tasks():
+    connection = sqlite3.connect('database.db')
+    cursor = connection.cursor()
+
+    cursor.execute('SELECT id, task, completed FROM tasks ORDER BY created_at DESC')
+    tasks = [{'id': row[0], 'task': row[1], 'completed': bool(row[2])} for row in cursor.fetchall()]
+    connection.close()
+    return tasks
+
+def delete_task(task_id):
+    connection = sqlite3.connect('database.db')
+    cursor = connection.cursor()
+
+    cursor.execute('DELETE FROM tasks where id = ? ',(task_id,))
+    connection.commit()
+    connection.close()
+
 
 def log_time(task_id, start_time, end_time):
     connection = sqlite3.connect('database.db')
