@@ -26,15 +26,49 @@
           <button id="addTodo" class="gothic-btn">Add</button>
         </div>
         <ul id="todoList" class="todo-list">
-          <!-- Todo items will be added here dynamically -->
+          {% for task in tasks %}
+          <li data-id="{{ task.id }}">
+            <div class="task-content">
+              <input type="checkbox" class="task-checkbox" {% if task.completed %}checked{% endif %}>
+              <span class="task-text {% if task.completed %}completed{% endif %}">{{ task.task }}</span>
+            </div>
+            <button class="delete-btn">×</button>
+          </li>
+          {% endfor %}
         </ul>
+      </div>
+
+      <div class="stats-container">
+        <h2 class="gothic-subtitle">Time Logs</h2>
+        <div class="stats-list">
+          {% for stat in stats %}
+          <div class="stat-item">
+            <span class="stat-date">{{ stat.date }}</span>
+            <span class="stat-duration">{{ (stat.total_duration / 3600)|round(2) }} hours</span>
+            <span class="stat-sessions">{{ stat.sessions }} sessions</span>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="time-logs-list">
+          {% for log in time_logs %}
+          <div class="time-log-item">
+            <span class="log-date">{{ log.date }}</span>
+            <span class="log-time">{{ log.start_time_formatted }} - {{ log.end_time_formatted }}</span>
+            <span class="log-duration">{{ (log.duration / 60)|round(1) }} minutes</span>
+            {% if log.description %}
+            <span class="log-description">{{ log.description }}</span>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
       </div>
     </div>
 
     <script>
-      // Stopwatch functionality
       let time = 0;
       let intervalId = null;
+      let startTime = null;
+      
       const timeDisplay = document.querySelector('.time-display');
       const startBtn = document.getElementById('startBtn');
       const stopBtn = document.getElementById('stopBtn');
@@ -68,8 +102,34 @@
         timeDisplay.classList.remove('fullscreen-timer');
       }
 
+      async function logTimeToServer() {
+        if (startTime) {
+          const endTime = new Date();
+
+          try {
+            await fetch('/api/time-logs', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                description: '',
+                start_time: startTime.toISOString(),
+                end_time: endTime.toISOString()
+              })
+            });
+            // Reload the page to show updated logs
+            window.location.reload();
+          } catch (error) {
+            console.error('Error logging time:', error);
+          }
+        }
+      }
+      
+      // Stopwatch functionality  
       startBtn.addEventListener('click', () => {
         if (!intervalId) {
+          startTime = new Date();
           intervalId = setInterval(() => {
             time++;
             updateDisplay();
@@ -78,15 +138,19 @@
         }
       });
 
-      stopBtn.addEventListener('click', () => {
+      stopBtn.addEventListener('click', async () => {
         clearInterval(intervalId);
         intervalId = null;
+        await logTimeToServer();
         exitFullScreen();
       });
 
-      resetBtn.addEventListener('click', () => {
+      resetBtn.addEventListener('click', async() => {
         clearInterval(intervalId);
         intervalId = null;
+        if(startTime){
+          await logTimeToServer();
+        }
         time = 0;
         updateDisplay();
         exitFullScreen();
@@ -97,23 +161,70 @@
       const addTodoBtn = document.getElementById('addTodo');
       const todoList = document.getElementById('todoList');
 
-      function addTodo() {
+      async function addTodo() {
         const todoText = todoInput.value.trim();
         if (todoText) {
-          const li = document.createElement('li');
-          li.innerHTML = `
-            <span>${todoText}</span>
-            <button class="delete-btn">×</button>
-          `;
-          todoList.appendChild(li);
-          todoInput.value = '';
+          try {
+            const response = await fetch('/api/tasks',{
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                task: todoText,
+              }),
+            });
+            const task = await response.json();
+            const li = document.createElement('li');
+            
+            li.dataset.id = task.id;
+            li.innerHTML = `
+              <div class="task-content">
+                <input type="checkbox" class="task-checkbox">
+                <span class="task-text">${todoText}</span>
+              </div>
+              <button class="delete-btn">×</button>
+            `;
 
-          li.querySelector('.delete-btn').addEventListener('click', () => {
-            li.remove();
-          });
+            todoList.insertBefore(li,todoList.firstChild);
+            todoInput.value = '';
+            setTaskListeners(li);
+          } catch (error) {
+            console.error('Error adding task:', error);
+          }
         }
       }
 
+      function setTaskListeners(li){
+        const checkbox = li.querySelector('.task-checkbox');
+        const deleteBtn = li.querySelector('.delete-btn');
+        const taskText = li.querySelector('.task-text');
+
+        checkbox.addEventListener('change', async () => {
+          try{
+            await fetch(`/api/tasks/${li.dataset.id}/toggle`,{
+              method: 'POST',
+            });
+            taskText.classList.toggle('completed');
+          } catch (error) {
+            console.error('Error toggling task:', error);
+          }
+        });
+
+        deleteBtn.addEventListener('click', async () => {
+          try{
+            await fetch(`/api/tasks/${li.dataset.id}`,{
+              method: 'DELETE',
+            });
+            li.remove();
+          } catch (error) {
+            console.error('Error deleting task:', error);
+          }
+        });
+      }
+
+      document.querySelectorAll('#todoList li').forEach(setTaskListeners);
+       
       addTodoBtn.addEventListener('click', addTodo);
       todoInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {

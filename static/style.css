@@ -126,6 +126,7 @@ body {
     padding: 1rem;
     border-radius: 5px;
     border: 1px solid #3a3a3a;
+    margin-bottom: 2rem;
 }
 
 .todo-input {
@@ -160,6 +161,29 @@ body {
     border: 1px solid #3a3a3a;
 }
 
+.task-content {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+}
+
+.task-checkbox {
+    width: 1.2rem;
+    height: 1.2rem;
+    cursor: pointer;
+    accent-color: #c41e3a;
+}
+
+.task-text {
+    flex: 1;
+}
+
+.task-text.completed {
+    text-decoration: line-through;
+    color: #666;
+}
+
 .delete-btn {
     background: none;
     border: none;
@@ -171,4 +195,78 @@ body {
 
 .delete-btn:hover {
     color: #ff1f1f;
+}
+
+.stats-container {
+    background-color: #1a1a1a;
+    padding: 1rem;
+    border-radius: 5px;
+    border: 1px solid #3a3a3a;
+}
+
+.stats-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    background-color: #2a2a2a;
+    border-radius: 3px;
+    border: 1px solid #3a3a3a;
+}
+
+.stat-date {
+    color: #c41e3a;
+    font-weight: bold;
+}
+
+.stat-duration {
+    color: #e0e0e0;
+}
+
+.stat-sessions {
+    color: #888;
+    font-style: italic;
+}
+
+.time-logs-list {
+    margin-top: 2rem;
+    border-top: 1px solid #8b0000;
+    padding-top: 1rem;
+}
+
+.time-log-item {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    border-radius: 5px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+}
+
+.log-date {
+    font-weight: bold;
+    color: #8b0000;
+}
+
+.log-time {
+    color: #e0e0e0;
+}
+
+.log-duration {
+    color: #8b0000;
+    font-weight: bold;
+}
+
+.log-description {
+    width: 100%;
+    color: #b0b0b0;
+    font-style: italic;
 }
