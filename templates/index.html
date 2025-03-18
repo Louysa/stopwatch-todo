@@ -154,9 +154,20 @@
         startBtn.style.display = 'none';
         timeDisplay.classList.add('fullscreen-timer');
         
+        // Request browser fullscreen
+        if (document.documentElement.requestFullscreen) {
+          document.documentElement.requestFullscreen().catch(err => {
+            console.log('Fullscreen request failed:', err);
+          });
+        } else if (document.documentElement.webkitRequestFullscreen) {
+          document.documentElement.webkitRequestFullscreen().catch(err => {
+            console.log('Fullscreen request failed:', err);
+          });
+        }
+        
         // Create and show stop and reset buttons
         const controls = container.querySelector('.controls');
-        controls.innerHTML = ''; // Clear existing buttons
+        controls.innerHTML = '';
         
         const stopBtn = document.createElement('button');
         stopBtn.id = 'stopBtn';
@@ -184,15 +195,28 @@
           }
         });
         
-        resetBtn.addEventListener('click', async () => {
+        resetBtn.addEventListener('click', () => {
           clearInterval(intervalId);
           intervalId = null;
-          await logTimeToServer();
-          exitFullScreen();
+          logTimeToServer().then(() => {
+            exitFullScreen();
+          });
         });
       }
 
       function exitFullScreen() {
+        // Exit browser fullscreen
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch(err => {
+            console.log('Exit fullscreen failed:', err);
+          });
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen().catch(err => {
+            console.log('Exit fullscreen failed:', err);
+          });
+        }
+        
+        // Reset container
         container.classList.remove('fullscreen');
         title.style.display = 'block';
         startBtn.style.display = 'block';
@@ -201,12 +225,8 @@
         // Remove stop and reset buttons
         const stopBtn = document.getElementById('stopBtn');
         const resetBtn = document.getElementById('resetBtn');
-        if (stopBtn) {
-          stopBtn.remove();
-        }
-        if (resetBtn) {
-          resetBtn.remove();
-        }
+        if (stopBtn) stopBtn.remove();
+        if (resetBtn) resetBtn.remove();
       }
 
       async function logTimeToServer() {
@@ -360,6 +380,30 @@
       todoInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
           addTodo();
+        }
+      });
+
+      // Update the space key event listener
+      document.addEventListener('keydown', function(event) {
+        if (event.code === 'Space' && !event.repeat) {
+          event.preventDefault(); // Prevent space from scrolling
+          
+          if (!intervalId) {
+            // Start timer
+            startTime = new Date();
+            intervalId = setInterval(() => {
+              time++;
+              updateDisplay();
+            }, 1000);
+            enterFullScreen();
+          } else {
+            // Stop timer
+            clearInterval(intervalId);
+            intervalId = null;
+            logTimeToServer().then(() => {
+              exitFullScreen();
+            });
+          }
         }
       });
     </script>

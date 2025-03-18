@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <style>
+        body {
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+            font-family: 'Inter', sans-serif;
+            padding: 2rem;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .card {
+            background-color: #2a2a2a;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+        }
+        .button {
+            background-color: #ff3333;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .button:hover {
+            background-color: #cc0000;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Admin Dashboard</h1>
+        
+        <div class="card">
+            <h2>Database Management</h2>
+            <button class="button" onclick="truncateDatabase()">Truncate Database</button>
+        </div>
+        
+        <div class="card">
+            <h2>Statistics</h2>
+            <div class="stats" id="stats">
+                Loading...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function truncateDatabase() {
+            if (!confirm('Are you sure you want to truncate the database? This cannot be undone.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/admin/truncate', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Basic ' + btoa(':' + prompt('Enter admin password:'))
+                    }
+                });
+                
+                if (response.ok) {
+                    alert('Database truncated successfully');
+                    loadStats();
+                } else {
+                    alert('Failed to truncate database');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error truncating database');
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/admin/stats', {
+                    headers: {
+                        'Authorization': 'Basic ' + btoa(':' + prompt('Enter admin password:'))
+                    }
+                });
+                
+                if (response.ok) {
+                    const stats = await response.json();
+                    displayStats(stats);
+                } else {
+                    document.getElementById('stats').innerHTML = 'Failed to load stats';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('stats').innerHTML = 'Error loading stats';
+            }
+        }
+
+        function displayStats(stats) {
+            const statsHtml = `
+                <div class="stat-card">
+                    <h3>Total Tasks</h3>
+                    <p>${stats.total_tasks}</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Time Logs</h3>
+                    <p>${stats.total_time_logs}</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Unique Devices</h3>
+                    <p>${stats.unique_devices}</p>
+                </div>
+            `;
+            
+            document.getElementById('stats').innerHTML = statsHtml;
+        }
+
+        // Load stats on page load
+        loadStats();
+    </script>
+</body>
+</html> 
