@@ -2,28 +2,36 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Gothic Stopwatch & Todo</title>
+    <title>Gothic Stopwatch</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&family=Crimson+Text:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   </head>
   <body>
-    <div class="container">
-      <h1 class="gothic-title">Gothic Timekeeper</h1>
-      
-      <div class="stopwatch-container">
-        <div class="time-display">00:00:00</div>
-        <div class="controls">
-          <button id="startBtn" class="gothic-btn">Start</button>
-          <button id="stopBtn" class="gothic-btn">Stop</button>
-          <button id="resetBtn" class="gothic-btn">Reset</button>
-        </div>
-      </div>
+    <div class="icon-buttons">
+      <button id="tasksBtn" class="icon-btn" title="Tasks">
+        <i class="fas fa-tasks"></i>
+      </button>
+      <button id="logsBtn" class="icon-btn" title="Time Logs">
+        <i class="fas fa-history"></i>
+      </button>
+    </div>
 
-      <div class="todo-container">
-        <h2 class="gothic-subtitle">Tasks of the Night</h2>
+    <!-- Tasks Side Panel -->
+    <div id="tasksPanel" class="side-panel">
+      <div class="panel-content">
+        <div class="panel-header">
+          <h2 class="gothic-subtitle">Tasks of the Night</h2>
+          <button id="closeTasksBtn" class="icon-btn">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
         <div class="todo-input">
           <input type="text" id="todoInput" placeholder="Enter a new task...">
-          <button id="addTodo" class="gothic-btn">Add</button>
+          <button id="addTodo" class="gothic-btn">
+            <i class="fas fa-plus"></i>
+            <span>Add</span>
+          </button>
         </div>
         <ul id="todoList" class="todo-list">
           {% for task in tasks %}
@@ -32,19 +40,46 @@
               <input type="checkbox" class="task-checkbox" {% if task.completed %}checked{% endif %}>
               <span class="task-text {% if task.completed %}completed{% endif %}">{{ task.task }}</span>
             </div>
-            <button class="delete-btn">×</button>
+            <button class="delete-btn">
+              <i class="fas fa-times"></i>
+            </button>
           </li>
           {% endfor %}
         </ul>
       </div>
+    </div>
 
-      <div class="stats-container">
+    <div class="container">
+      <h1 class="gothic-title">Sude Kronometre</h1>
+      <div class="stopwatch-container">
+        <div class="time-display">00:00:00</div>
+        <div class="controls">
+          <button id="startBtn" class="gothic-btn">
+            <i class="fas fa-play"></i>
+            <span>Start</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Time Logs Popup -->
+    <div id="logsPopup" class="popup">
+      <div class="popup-content">
         <h2 class="gothic-subtitle">Time Logs</h2>
         <div class="stats-list">
           {% for stat in stats %}
           <div class="stat-item">
             <span class="stat-date">{{ stat.date }}</span>
-            <span class="stat-duration">{{ (stat.total_duration / 3600)|round(2) }} hours</span>
+            <span class="stat-duration">
+              {% set hours = (stat.total_duration / 3600)|int %}
+              {% set minutes = ((stat.total_duration % 3600) / 60)|int %}
+              {% if hours > 0 %}
+                {{ hours }} hour{% if hours != 1 %}s{% endif %}
+                {% if minutes > 0 %} and {{ minutes }} minute{% if minutes != 1 %}s{% endif %}{% endif %}
+              {% else %}
+                {{ minutes }} minute{% if minutes != 1 %}s{% endif %}
+              {% endif %}
+            </span>
             <span class="stat-sessions">{{ stat.sessions }} sessions</span>
           </div>
           {% endfor %}
@@ -54,13 +89,23 @@
           <div class="time-log-item">
             <span class="log-date">{{ log.date }}</span>
             <span class="log-time">{{ log.start_time_formatted }} - {{ log.end_time_formatted }}</span>
-            <span class="log-duration">{{ (log.duration / 60)|round(1) }} minutes</span>
-            {% if log.description %}
-            <span class="log-description">{{ log.description }}</span>
-            {% endif %}
+            <span class="log-duration">
+              {% set hours = (log.duration / 3600)|int %}
+              {% set minutes = ((log.duration % 3600) / 60)|int %}
+              {% if hours > 0 %}
+                {{ hours }} hour{% if hours != 1 %}s{% endif %}
+                {% if minutes > 0 %} and {{ minutes }} minute{% if minutes != 1 %}s{% endif %}{% endif %}
+              {% else %}
+                {{ minutes }} minute{% if minutes != 1 %}s{% endif %}
+              {% endif %}
+            </span>
           </div>
           {% endfor %}
         </div>
+        <button class="close-popup gothic-btn">
+          <i class="fas fa-times"></i>
+          <span>Close</span>
+        </button>
       </div>
     </div>
 
@@ -71,11 +116,30 @@
       
       const timeDisplay = document.querySelector('.time-display');
       const startBtn = document.getElementById('startBtn');
-      const stopBtn = document.getElementById('stopBtn');
-      const resetBtn = document.getElementById('resetBtn');
       const container = document.querySelector('.container');
-      const todoContainer = document.querySelector('.todo-container');
       const title = document.querySelector('.gothic-title');
+
+      // Popup functionality
+      const logsBtn = document.getElementById('logsBtn');
+      const logsPopup = document.getElementById('logsPopup');
+      const closeButtons = document.querySelectorAll('.close-popup');
+
+      logsBtn.addEventListener('click', () => {
+        logsPopup.classList.add('show');
+      });
+
+      closeButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          logsPopup.classList.remove('show');
+        });
+      });
+
+      // Close popups when clicking outside
+      window.addEventListener('click', (e) => {
+        if (e.target === logsPopup) {
+          logsPopup.classList.remove('show');
+        }
+      });
 
       function updateDisplay() {
         const hours = Math.floor(time / 3600);
@@ -86,26 +150,68 @@
 
       function enterFullScreen() {
         container.classList.add('fullscreen');
-        todoContainer.style.display = 'none';
         title.style.display = 'none';
         startBtn.style.display = 'none';
-        resetBtn.style.display = 'none';
         timeDisplay.classList.add('fullscreen-timer');
+        
+        // Create and show stop and reset buttons
+        const controls = container.querySelector('.controls');
+        controls.innerHTML = ''; // Clear existing buttons
+        
+        const stopBtn = document.createElement('button');
+        stopBtn.id = 'stopBtn';
+        stopBtn.className = 'gothic-btn stop-btn';
+        stopBtn.innerHTML = '<i class="fas fa-pause"></i><span>Stop</span>';
+        controls.appendChild(stopBtn);
+        
+        const resetBtn = document.createElement('button');
+        resetBtn.id = 'resetBtn';
+        resetBtn.className = 'gothic-btn reset-btn';
+        resetBtn.innerHTML = '<i class="fas fa-stop"></i><span>End</span>';
+        controls.appendChild(resetBtn);
+        
+        stopBtn.addEventListener('click', () => {
+          if (intervalId) {
+            clearInterval(intervalId);
+            intervalId = null;
+            stopBtn.innerHTML = '<i class="fas fa-play"></i><span>Resume</span>';
+          } else {
+            intervalId = setInterval(() => {
+              time++;
+              updateDisplay();
+            }, 1000);
+            stopBtn.innerHTML = '<i class="fas fa-pause"></i><span>Stop</span>';
+          }
+        });
+        
+        resetBtn.addEventListener('click', async () => {
+          clearInterval(intervalId);
+          intervalId = null;
+          await logTimeToServer();
+          exitFullScreen();
+        });
       }
 
       function exitFullScreen() {
         container.classList.remove('fullscreen');
-        todoContainer.style.display = 'block';
         title.style.display = 'block';
         startBtn.style.display = 'block';
-        resetBtn.style.display = 'block';
         timeDisplay.classList.remove('fullscreen-timer');
+        
+        // Remove stop and reset buttons
+        const stopBtn = document.getElementById('stopBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        if (stopBtn) {
+          stopBtn.remove();
+        }
+        if (resetBtn) {
+          resetBtn.remove();
+        }
       }
 
       async function logTimeToServer() {
         if (startTime) {
           const endTime = new Date();
-
           try {
             await fetch('/api/time-logs', {
               method: 'POST',
@@ -113,7 +219,6 @@
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                description: '',
                 start_time: startTime.toISOString(),
                 end_time: endTime.toISOString()
               })
@@ -138,22 +243,46 @@
         }
       });
 
-      stopBtn.addEventListener('click', async () => {
-        clearInterval(intervalId);
-        intervalId = null;
-        await logTimeToServer();
-        exitFullScreen();
+      // Tasks panel functionality with local storage
+      const tasksBtn = document.getElementById('tasksBtn');
+      const tasksPanel = document.getElementById('tasksPanel');
+      const closeTasksBtn = document.getElementById('closeTasksBtn');
+
+      // Load tasks panel state from local storage
+      const isTasksPanelOpen = localStorage.getItem('tasksPanelOpen') === 'true';
+      if (isTasksPanelOpen) {
+        tasksPanel.classList.add('show');
+        container.classList.add('side-panel-open');
+      }
+
+      tasksBtn.addEventListener('click', () => {
+        tasksPanel.classList.add('show');
+        container.classList.add('side-panel-open');
+        localStorage.setItem('tasksPanelOpen', 'true');
       });
 
-      resetBtn.addEventListener('click', async() => {
-        clearInterval(intervalId);
-        intervalId = null;
-        if(startTime){
-          await logTimeToServer();
+      closeTasksBtn.addEventListener('click', () => {
+        tasksPanel.classList.remove('show');
+        container.classList.remove('side-panel-open');
+        localStorage.setItem('tasksPanelOpen', 'false');
+      });
+
+      // Close tasks panel when clicking outside
+      window.addEventListener('click', (e) => {
+        if (e.target === tasksPanel) {
+          tasksPanel.classList.remove('show');
+          container.classList.remove('side-panel-open');
+          localStorage.setItem('tasksPanelOpen', 'false');
         }
-        time = 0;
-        updateDisplay();
-        exitFullScreen();
+      });
+
+      // Update container margin when tasks panel state changes
+      tasksPanel.addEventListener('transitionend', () => {
+        if (tasksPanel.classList.contains('show')) {
+          container.classList.add('side-panel-open');
+        } else {
+          container.classList.remove('side-panel-open');
+        }
       });
 
       // Todo list functionality
@@ -183,7 +312,9 @@
                 <input type="checkbox" class="task-checkbox">
                 <span class="task-text">${todoText}</span>
               </div>
-              <button class="delete-btn">×</button>
+              <button class="delete-btn">
+                <i class="fas fa-times"></i>
+              </button>
             `;
 
             todoList.insertBefore(li,todoList.firstChild);
