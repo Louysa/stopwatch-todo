@@ -1,11 +1,37 @@
 from flask import Flask, render_template, request, jsonify
+from flask_sqlalchemy import SQLAlchemy
 from database import init_db, add_task, get_tasks, toggle_task, delete_task, log_time, get_time_logs, get_daily_stats
 from datetime import datetime
-
+import os
 
 app = Flask(__name__)
 
-init_db()
+# Configure database
+database_url = os.environ.get('DATABASE_URL')
+if database_url and database_url.startswith('postgres://'):
+    database_url = database_url.replace('postgres://', 'postgresql://', 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url or 'sqlite:///stopwatch.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+
+# Models
+class TimeLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    start_time = db.Column(db.DateTime, nullable=False)
+    end_time = db.Column(db.DateTime, nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    duration = db.Column(db.Integer, nullable=False)  # duration in seconds
+
+class Task(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    task = db.Column(db.String(200), nullable=False)
+    completed = db.Column(db.Boolean, default=False)
+
+# Create tables
+with app.app_context():
+    db.create_all()
 
 @app.route('/')
 def index():
@@ -36,5 +62,6 @@ def create_time_log():
     log_time(data.get('description', ''), data['start_time'], data['end_time'])
     return jsonify({'success': True})
 
-if __name__ == "__main__":
-    app.run(debug=True)
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
