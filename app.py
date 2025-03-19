@@ -27,7 +27,7 @@ class TimeLog(db.Model):
     end_time = db.Column(db.DateTime, nullable=False)
     date = db.Column(db.Date, nullable=False)
     duration = db.Column(db.Integer, nullable=False)
-    device_id = db.Column(db.String(36), nullable=False, index=True)
+    device_id = db.Column(db.String(36), nullable=False)
 
 class Task(db.Model):
     __tablename__ = 'task'
