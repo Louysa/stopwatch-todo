@@ -1,5 +1,7 @@
 import sqlite3
 from datetime import datetime
+from flask import session
+import uuid
 
 def init_db():
     connection = sqlite3.connect('database.db')
@@ -99,24 +101,39 @@ def get_time_logs():
     connection.close()
     return logs
 
-def get_daily_stats():
-    connection = sqlite3.connect('database.db')
-    cursor = connection.cursor()
+def get_device_id():
+    if 'device_id' not in session:
+        session['device_id'] = str(uuid.uuid4())
+    return session['device_id']
 
-    cursor.execute('''
-        SELECT 
-            strftime('%Y-%m-%d', start_time) as date,
-            COUNT(*) as sessions,
-            ROUND(SUM((julianday(end_time) - julianday(start_time)) * 24 * 60 * 60)) as total_duration
-        FROM time_logs 
-        GROUP BY date 
-        ORDER BY date DESC
-    ''')
-    stats = [{
-        'date': row[0],
-        'sessions': row[1],
-        'total_duration': row[2]
-    } for row in cursor.fetchall()]
-    connection.close()
-    return stats
+def get_daily_stats():
+    from app import TimeLog  # Import here to avoid circular imports
+    device_id = get_device_id()
+    daily_stats = []
+    
+    # Get all logs for this device using SQLAlchemy
+    logs = TimeLog.query.filter_by(device_id=device_id).order_by(TimeLog.date.desc()).all()
+    
+    # Process logs by date
+    dates_processed = set()
+    for log in logs:
+        date_str = log.date.strftime('%Y-%m-%d')
+        if date_str not in dates_processed:
+            dates_processed.add(date_str)
+            
+            # Get all logs for this date
+            daily_logs = TimeLog.query.filter_by(
+                device_id=device_id,
+                date=log.date
+            ).all()
+            
+            total_duration = sum(log.duration for log in daily_logs)
+            
+            daily_stats.append({
+                'date': date_str,
+                'total_duration': total_duration,
+                'sessions': len(daily_logs)
+            })
+    
+    return daily_stats
 
