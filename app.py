@@ -34,7 +34,7 @@ class Task(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     task = db.Column(db.String(200), nullable=False)
     completed = db.Column(db.Boolean, default=False)
-    device_id = db.Column(db.String(36), nullable=False, index=True)
+    device_id = db.Column(db.String(36), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 # Add admin authentication
@@ -87,30 +87,89 @@ def initial_cleanup():
 def index():
     device_id = get_device_id()
     tasks = Task.query.filter_by(device_id=device_id).order_by(Task.created_at.desc()).all()
-    stats = get_daily_stats()
-    time_logs = get_time_logs()
-    return render_template('index.html', tasks=tasks, stats=stats, time_logs=time_logs)
+    time_logs = TimeLog.query.filter_by(device_id=device_id).order_by(TimeLog.date.desc()).all()
+    
+    # Calculate stats
+    stats = []
+    dates_processed = set()
+    for log in time_logs:
+        date_str = log.date.strftime('%Y-%m-%d')
+        if date_str not in dates_processed:
+            dates_processed.add(date_str)
+            daily_logs = TimeLog.query.filter_by(
+                device_id=device_id,
+                date=log.date
+            ).all()
+            total_duration = sum(log.duration for log in daily_logs)
+            stats.append({
+                'date': date_str,
+                'total_duration': total_duration,
+                'sessions': len(daily_logs)
+            })
+    
+    return render_template('index.html', tasks=tasks, time_logs=time_logs, stats=stats)
 
-@app.route('/api/tasks', methods=['POST'])
-def create_task():
-    data = request.get_json()
-    task_id = add_task(data['task'])
-    return jsonify({'id': task_id, 'task': data['task'], 'completed': False})
+@app.route('/api/tasks', methods=['GET', 'POST'])
+def handle_tasks():
+    device_id = get_device_id()
+    
+    if request.method == 'POST':
+        data = request.get_json()
+        new_task = Task(
+            task=data['task'],
+            device_id=device_id
+        )
+        db.session.add(new_task)
+        db.session.commit()
+        return jsonify({
+            'id': new_task.id,
+            'task': new_task.task,
+            'completed': new_task.completed
+        })
+    
+    tasks = Task.query.filter_by(device_id=device_id).order_by(Task.created_at.desc()).all()
+    return jsonify([{
+        'id': task.id,
+        'task': task.task,
+        'completed': task.completed
+    } for task in tasks])
 
 @app.route('/api/tasks/<int:task_id>/toggle', methods=['POST'])
-def toggle_task_route(task_id):
-    toggle_task(task_id)
+def toggle_task(task_id):
+    device_id = get_device_id()
+    task = Task.query.filter_by(id=task_id, device_id=device_id).first_or_404()
+    task.completed = not task.completed
+    db.session.commit()
     return jsonify({'success': True})
 
 @app.route('/api/tasks/<int:task_id>', methods=['DELETE'])
-def delete_task_route(task_id):
-    delete_task(task_id)
+def delete_task(task_id):
+    device_id = get_device_id()
+    task = Task.query.filter_by(id=task_id, device_id=device_id).first_or_404()
+    db.session.delete(task)
+    db.session.commit()
     return jsonify({'success': True})
 
 @app.route('/api/time-logs', methods=['POST'])
 def create_time_log():
+    device_id = get_device_id()
     data = request.get_json()
-    log_time(data.get('description', ''), data['start_time'], data['end_time'])
+    
+    start_time = datetime.fromisoformat(data['start_time'].replace('Z', '+00:00'))
+    end_time = datetime.fromisoformat(data['end_time'].replace('Z', '+00:00'))
+    duration = int((end_time - start_time).total_seconds())
+    
+    time_log = TimeLog(
+        start_time=start_time,
+        end_time=end_time,
+        date=start_time.date(),
+        duration=duration,
+        device_id=device_id
+    )
+    
+    db.session.add(time_log)
+    db.session.commit()
+    
     return jsonify({'success': True})
 
 # Add these new routes for database management
