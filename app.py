@@ -1,6 +1,5 @@
 from flask import Flask, render_template, request, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
-from database import init_db, add_task, get_tasks, toggle_task, delete_task, log_time, get_time_logs, get_daily_stats
 from datetime import datetime
 import os
 import uuid
@@ -54,34 +53,10 @@ def get_device_id():
         session['device_id'] = str(uuid.uuid4())
     return session['device_id']
 
-# Create all tables
-def init_db():
-    with app.app_context():
-        # Drop all tables first (be careful with this in production!)
-        db.drop_all()
-        # Create all tables
-        db.create_all()
-        print("Database tables created successfully!")
-
-# Initialize database tables
-init_db()
-
-# One-time cleanup route (protected by admin password)
-@app.route('/api/admin/initial-cleanup', methods=['POST'])
-def initial_cleanup():
-    auth = request.authorization
-    if not auth or auth.password != os.environ.get('ADMIN_PASSWORD'):
-        return jsonify({'error': 'Unauthorized'}), 401
-    
-    try:
-        # Clear all existing data
-        TimeLog.query.delete()
-        Task.query.delete()
-        db.session.commit()
-        return jsonify({'message': 'Database cleaned successfully'})
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
+# Initialize database
+with app.app_context():
+    db.create_all()
+    print("Database tables created successfully!")
 
 @app.route('/')
 def index():

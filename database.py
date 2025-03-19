@@ -1,6 +1,5 @@
 from flask import session
 import uuid
-from datetime import datetime
 
 def get_device_id():
     if 'device_id' not in session:
