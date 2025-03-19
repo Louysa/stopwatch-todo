@@ -71,40 +71,29 @@ def log_time(description, start_time, end_time):
     connection.commit()
     connection.close()
 
-def get_time_logs():
-    connection = sqlite3.connect('database.db')
-    cursor = connection.cursor()
-
-    cursor.execute('''
-        SELECT 
-            id,
-            description,
-            start_time,
-            end_time,
-            strftime('%Y-%m-%d', start_time) as date,
-            strftime('%H:%M:%S', start_time) as start_time_formatted,
-            strftime('%H:%M:%S', end_time) as end_time_formatted,
-            ROUND((julianday(end_time) - julianday(start_time)) * 24 * 60 * 60) as duration
-        FROM time_logs 
-        ORDER BY start_time DESC
-    ''')
-    logs = [{
-        'id': row[0],
-        'description': row[1],
-        'start_time': row[2],
-        'end_time': row[3],
-        'date': row[4],
-        'start_time_formatted': row[5],
-        'end_time_formatted': row[6],
-        'duration': row[7]
-    } for row in cursor.fetchall()]
-    connection.close()
-    return logs
-
 def get_device_id():
     if 'device_id' not in session:
         session['device_id'] = str(uuid.uuid4())
     return session['device_id']
+
+def get_time_logs():
+    from app import TimeLog  # Import here to avoid circular imports
+    device_id = get_device_id()
+    
+    # Get all logs for this device using SQLAlchemy
+    logs = TimeLog.query.filter_by(device_id=device_id).order_by(TimeLog.date.desc()).all()
+    
+    # Format the logs
+    formatted_logs = []
+    for log in logs:
+        formatted_logs.append({
+            'date': log.date.strftime('%Y-%m-%d'),
+            'start_time': log.start_time.strftime('%H:%M:%S'),
+            'end_time': log.end_time.strftime('%H:%M:%S'),
+            'duration': log.duration
+        })
+    
+    return formatted_logs
 
 def get_daily_stats():
     from app import TimeLog  # Import here to avoid circular imports
