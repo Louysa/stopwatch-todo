@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash
 from supabase import create_client
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 from functools import wraps
 
@@ -11,6 +11,10 @@ app.secret_key = os.environ.get('SECRET_KEY', os.urandom(24).hex())
 supabase_url = os.environ.get("SUPABASE_URL")
 supabase_key = os.environ.get("SUPABASE_KEY")
 supabase = create_client(supabase_url, supabase_key)
+
+# Configure session to use filesystem
+app.config['SESSION_TYPE'] = 'filesystem'
+app.permanent_session_lifetime = timedelta(days=30)
 
 # Login required decorator
 def login_required(f):
@@ -31,6 +35,7 @@ def login():
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
+        remember = request.form.get('remember')
         
         try:
             auth_response = supabase.auth.sign_in_with_password({
@@ -41,9 +46,15 @@ def login():
                 'id': auth_response.user.id,
                 'email': auth_response.user.email
             }
+            
+            # Set session permanent if remember me is checked
+            if remember:
+                session.permanent = True
+                app.permanent_session_lifetime = timedelta(days=30)
+            
             return redirect(url_for('index'))
         except Exception as e:
-            flash('Invalid login credentials')
+            flash('Invalid login credentials', 'error')
             return render_template('login.html')
     
     return render_template('login.html')
