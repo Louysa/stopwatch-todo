@@ -27,18 +27,27 @@ body {
 .icon-btn {
     background: none;
     border: none;
-    color: #8b0000;
+    color: #fff;
     font-size: 1.5rem;
     cursor: pointer;
     padding: 0.5rem;
-    transition: all 0.3s ease;
-    text-shadow: 0 0 10px rgba(139, 0, 0, 0.3);
+    transition: color 0.3s ease;
 }
 
 .icon-btn:hover {
-    color: #ff0000;
-    transform: scale(1.1);
-    text-shadow: 0 0 15px rgba(139, 0, 0, 0.5);
+    color: #ff4444;
+}
+
+/* Style for logout link */
+.icon-btn[href="/logout"] {
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-btn[href="/logout"]:hover {
+    color: #ff4444;
 }
 
 .container {

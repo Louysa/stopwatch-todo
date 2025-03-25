@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, make_response, redirect, url_for
+from flask import Flask, render_template, request, jsonify, make_response, redirect, url_for, session
 from supabase import create_client
 from datetime import datetime
 import os
@@ -9,6 +9,9 @@ app = Flask(__name__,
     static_folder='../static',
     static_url_path='/static'
 )
+
+# Add secret key for session management
+app.secret_key = os.environ.get('SECRET_KEY', os.urandom(24).hex())
 
 # Supabase configuration
 supabase_url = os.environ.get("SUPABASE_URL")
@@ -22,16 +25,14 @@ supabase = create_client(supabase_url, supabase_key)
 
 @app.route('/')
 def index():
-    device_id = request.cookies.get('device_id')
+    # Check if user is authenticated
+    if not session.get('user_id'):
+        return redirect(url_for('login'))
+        
     response = make_response(render_template('index.html', 
-        title="Gothic Stopwatch",  # Keep your gothic themed title
-        panel_title="Tasks of the Night"  # Keep your gothic themed panel title
+        title="Gothic Stopwatch",
+        panel_title="Tasks of the Night"
     ))
-    
-    if not device_id:
-        device_id = str(uuid.uuid4())
-        response.set_cookie('device_id', device_id, max_age=31536000)
-    
     return response
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -44,11 +45,13 @@ def login():
                 "email": email,
                 "password": password
             })
+            # Store user session
+            session['user_id'] = response.user.id
             return redirect(url_for('index'))
         except Exception as e:
             return render_template('login.html', 
                 error="Invalid credentials",
-                title="Gothic Login"  # Keep gothic theme in login
+                title="Gothic Login"
             )
     return render_template('login.html', title="Gothic Login")
 
@@ -74,8 +77,9 @@ def signup():
 def logout():
     try:
         supabase.auth.sign_out()
+        # Clear session
+        session.clear()
         response = make_response(redirect(url_for('login')))
-        # Clear any auth cookies if you're using them
         return response
     except Exception as e:
         return redirect(url_for('index'))
@@ -90,35 +94,38 @@ def log_time():
         if not all(key in data for key in ["startTime", "endTime", "duration"]):
             return jsonify({"error": "Missing required fields"}), 400
 
-        device_id = request.cookies.get('device_id', str(uuid.uuid4()))
+        # Get user from session
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({"error": "User not authenticated"}), 401
         
         time_log = {
             "start_time": datetime.fromtimestamp(data["startTime"] / 1000).isoformat(),
             "end_time": datetime.fromtimestamp(data["endTime"] / 1000).isoformat(),
             "date": datetime.now().date().isoformat(),
             "duration": data["duration"],
-            "device_id": device_id
+            "user_id": user_id  # Changed from device_id to user_id
         }
         
-        print(f"Attempting to log time: {time_log}")  # Debug print
-        
+        print(f"Attempting to log time: {time_log}")
         result = supabase.table('time_logs').insert(time_log).execute()
         return jsonify({"success": True, "data": result.data})
     except Exception as e:
-        print(f"Error in log_time: {str(e)}")  # Debug print
+        print(f"Error in log_time: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @app.route("/get_logs")
 def get_logs():
     try:
-        device_id = request.cookies.get('device_id')
-        if not device_id:
+        # Get user from session
+        user_id = session.get('user_id')
+        if not user_id:
             return jsonify({"logs": [], "stats": []})
             
-        # Get all logs
+        # Get all logs for the user
         result = supabase.table('time_logs')\
             .select("*")\
-            .eq('device_id', device_id)\
+            .eq('user_id', user_id)\
             .order('start_time', desc=True)\
             .execute()
         

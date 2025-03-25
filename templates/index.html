@@ -16,6 +16,9 @@
       <button id="logsBtn" class="icon-btn" title="Time Logs">
         <i class="fas fa-history"></i>
       </button>
+      <a href="/logout" class="icon-btn" title="Logout">
+        <i class="fas fa-sign-out-alt"></i>
+      </a>
     </div>
 
     <!-- Tasks Side Panel -->
@@ -85,6 +88,7 @@
           </div>
           {% endfor %}
         </div>
+        <h2 class="gothic-subtitle">Recent Time Logs</h2>
         <div class="time-logs-list">
           {% for log in time_logs %}
           <div class="time-log-item">
