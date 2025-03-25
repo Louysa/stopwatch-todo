@@ -361,19 +361,21 @@
       // Event Listeners
       document.getElementById('startBtn').addEventListener('click', startTimer);
 
-      document.addEventListener('keydown', function(event) {
-        if (event.code === 'Space' && !event.repeat && document.hasFocus()) {
-          event.preventDefault();
-          
-          if (!intervalId && !isPaused) {
-            // Start timer if it's not running
+      // Update the space key event listener
+      document.addEventListener('keydown', (e) => {
+        // Ignore space key if user is typing in an input field
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+          return;
+        }
+        
+        if (e.code === 'Space') {
+          e.preventDefault();
+          if (!intervalId) {
             startTimer();
-          } else if (intervalId && !isPaused) {
-            // Pause if timer is running
-            pauseTimer();
           } else if (isPaused) {
-            // Resume if timer is paused
             resumeTimer();
+          } else {
+            pauseTimer();
           }
         }
       });
@@ -425,38 +427,42 @@
       const addTodoBtn = document.getElementById('addTodo');
       const todoList = document.getElementById('todoList');
 
+      // Update the addTodo function with the correct endpoint
       async function addTodo() {
-        const todoText = todoInput.value.trim();
-        if (todoText) {
+        const input = document.getElementById('todoInput');
+        const text = input.value.trim();
+        
+        if (text) {
           try {
-            const response = await fetch('/api/tasks',{
+            const response = await fetch('/api/tasks', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
               },
-              body: JSON.stringify({
-                task: todoText,
-              }),
+              body: JSON.stringify({ text })
             });
-            const task = await response.json();
-            const li = document.createElement('li');
             
-            li.dataset.id = task.id;
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            const todoList = document.getElementById('todoList');
+            const li = document.createElement('li');
             li.innerHTML = `
               <div class="task-content">
-                <input type="checkbox" class="task-checkbox">
-                <span class="task-text">${todoText}</span>
+                <input type="checkbox" class="task-checkbox" onchange="toggleTodo(${data.id}, this.checked)">
+                <span class="task-text">${text}</span>
               </div>
-              <button class="delete-btn">
+              <button class="delete-btn" onclick="deleteTodo(${data.id})">
                 <i class="fas fa-times"></i>
               </button>
             `;
-
-            todoList.insertBefore(li,todoList.firstChild);
-            todoInput.value = '';
-            setTaskListeners(li);
+            todoList.insertBefore(li, todoList.firstChild);
+            input.value = '';
           } catch (error) {
             console.error('Error adding task:', error);
+            alert('Failed to add task. Please try again.');
           }
         }
       }

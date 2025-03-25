@@ -155,5 +155,62 @@ def get_logs():
         print(f"Error in get_logs: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/tasks', methods=['GET'])
+def get_tasks():
+    try:
+        # Get tasks for the current user
+        response = supabase.table('tasks').select('*').eq('user_id', session.get('user_id')).order('created_at', desc=True).execute()
+        return jsonify(response.data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/tasks', methods=['POST'])
+def create_task():
+    try:
+        data = request.get_json()
+        if not data or 'text' not in data:
+            return jsonify({'error': 'Task text is required'}), 400
+
+        # Create task for the current user
+        response = supabase.table('tasks').insert({
+            'user_id': session.get('user_id'),
+            'text': data['text'],
+            'completed': False
+        }).execute()
+        
+        return jsonify(response.data[0])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/tasks/<int:task_id>', methods=['PUT'])
+def update_task(task_id):
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        # Update task for the current user
+        response = supabase.table('tasks').update(data).eq('id', task_id).eq('user_id', session.get('user_id')).execute()
+        
+        if not response.data:
+            return jsonify({'error': 'Task not found'}), 404
+            
+        return jsonify(response.data[0])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/tasks/<int:task_id>', methods=['DELETE'])
+def delete_task(task_id):
+    try:
+        # Delete task for the current user
+        response = supabase.table('tasks').delete().eq('id', task_id).eq('user_id', session.get('user_id')).execute()
+        
+        if not response.data:
+            return jsonify({'error': 'Task not found'}), 404
+            
+        return jsonify({'message': 'Task deleted successfully'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=True)
