@@ -249,5 +249,10 @@ def get_logs():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# Add this for Vercel
+@app.route('/_vercel/deploy/preview')
+def deploy_preview():
+    return 'OK'
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()
