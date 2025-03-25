@@ -61,10 +61,10 @@
     <div class="container">
       <div id="time">00:00:00</div>
       <div class="timer-controls">
-        <button class="gothic-btn start-btn" id="startBtn">Begin</button>
-        <button class="gothic-btn pause-btn" id="pauseBtn" style="display: none;">Pause</button>
-        <button class="gothic-btn stop-btn" id="stopBtn" style="display: none;">End</button>
-        <button class="gothic-btn reset-btn" id="resetBtn" style="display: none;">Reset</button>
+        <button id="startBtn" class="btn">Start</button>
+        <button id="pauseBtn" class="btn" style="display: none;">Pause</button>
+        <button id="stopBtn" class="btn" style="display: none;">Stop</button>
+        <button id="resetBtn" class="btn" style="display: none;">Reset</button>
       </div>
     </div>
 
@@ -83,12 +83,97 @@
     <div class="overlay" id="overlay"></div>
 
     <script>
-      let startTime, intervalId, time = 0, isPaused = false;
+      document.addEventListener('DOMContentLoaded', () => {
+        let startTime, intervalId, time = 0, isPaused = false;
+        const timeDisplay = document.getElementById('time');
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const resetBtn = document.getElementById('resetBtn');
+
+        // Initialize display
+        timeDisplay.textContent = '00:00:00';
+
+        function updateDisplay() {
+          const hours = Math.floor(time / 3600);
+          const minutes = Math.floor((time % 3600) / 60);
+          const seconds = time % 60;
+          timeDisplay.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        function startTimer() {
+          if (!intervalId) {
+            startTime = new Date().getTime() - (time * 1000);
+            intervalId = setInterval(updateTimer, 1000);
+            isPaused = false;
+            
+            startBtn.style.display = 'none';
+            pauseBtn.style.display = 'inline-block';
+            stopBtn.style.display = 'inline-block';
+            resetBtn.style.display = 'inline-block';
+          }
+        }
+
+        function updateTimer() {
+          if (!isPaused) {
+            time++;
+            updateDisplay();
+          }
+        }
+
+        function pauseTimer() {
+          isPaused = !isPaused;
+          pauseBtn.textContent = isPaused ? 'Resume' : 'Pause';
+        }
+
+        function stopTimer() {
+          if (intervalId) {
+            clearInterval(intervalId);
+            logTimeToServer();
+            intervalId = null;
+            
+            time = 0;
+            updateDisplay();
+            startBtn.style.display = 'inline-block';
+            pauseBtn.style.display = 'none';
+            stopBtn.style.display = 'none';
+            resetBtn.style.display = 'none';
+            pauseBtn.textContent = 'Pause';
+            isPaused = false;
+          }
+        }
+
+        function resetTimer() {
+          time = 0;
+          updateDisplay();
+          if (isPaused) {
+            pauseBtn.textContent = 'Pause';
+            isPaused = false;
+          }
+        }
+
+        // Space key event listener
+        document.addEventListener('keydown', function(event) {
+          if (event.code === 'Space' && document.activeElement.tagName !== 'INPUT') {
+            event.preventDefault();
+            if (!intervalId) {
+              startTimer();
+            } else {
+              pauseTimer();
+            }
+          }
+        });
+
+        // Button event listeners
+        if (startBtn) startBtn.addEventListener('click', startTimer);
+        if (stopBtn) stopBtn.addEventListener('click', stopTimer);
+        if (resetBtn) resetBtn.addEventListener('click', resetTimer);
+        if (pauseBtn) pauseBtn.addEventListener('click', pauseTimer);
+      });
+
       let activeTime = 0;
       let lastResumeTime = null;
       
-      const timeDisplay = document.getElementById('time');
-      const startBtn = document.getElementById('startBtn');
       const container = document.querySelector('.container');
       const title = document.querySelector('.gothic-title');
 
@@ -167,85 +252,6 @@
       // Event Listeners
       document.querySelector('.logs-btn').addEventListener('click', showPopup);
       overlay.addEventListener('click', closePopup);
-
-      function startTimer() {
-        if (!intervalId) {
-          startTime = new Date().getTime() - (time * 1000);
-          intervalId = setInterval(updateTimer, 1000);
-          isPaused = false;
-          
-          // Update button visibility
-          startBtn.style.display = 'none';
-          document.getElementById('pauseBtn').style.display = 'inline-block';
-          document.getElementById('stopBtn').style.display = 'inline-block';
-          document.getElementById('resetBtn').style.display = 'inline-block';
-        }
-      }
-
-      function updateTimer() {
-        if (!isPaused) {
-          time++;
-          updateDisplay();
-        }
-      }
-
-      function updateDisplay() {
-        const hours = Math.floor(time / 3600);
-        const minutes = Math.floor((time % 3600) / 60);
-        const seconds = time % 60;
-        timeDisplay.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-      }
-
-      function pauseTimer() {
-        isPaused = !isPaused;
-        const pauseBtn = document.getElementById('pauseBtn');
-        pauseBtn.textContent = isPaused ? 'Resume' : 'Pause';
-      }
-
-      function stopTimer() {
-        if (intervalId) {
-          clearInterval(intervalId);
-          logTimeToServer();
-          intervalId = null;
-          
-          // Reset display and buttons
-          time = 0;
-          updateDisplay();
-          startBtn.style.display = 'inline-block';
-          document.getElementById('pauseBtn').style.display = 'none';
-          document.getElementById('stopBtn').style.display = 'none';
-          document.getElementById('resetBtn').style.display = 'none';
-          document.getElementById('pauseBtn').textContent = 'Pause';
-          isPaused = false;
-        }
-      }
-
-      function resetTimer() {
-        time = 0;
-        updateDisplay();
-        if (isPaused) {
-          document.getElementById('pauseBtn').textContent = 'Pause';
-          isPaused = false;
-        }
-      }
-
-      // Space key event listener
-      document.addEventListener('keydown', function(event) {
-        if (event.code === 'Space' && document.activeElement.tagName !== 'INPUT') {
-          event.preventDefault();
-          if (!intervalId) {
-            startTimer();
-          } else {
-            pauseTimer();
-          }
-        }
-      });
-
-      // Button event listeners
-      startBtn.addEventListener('click', startTimer);
-      document.getElementById('stopBtn').addEventListener('click', stopTimer);
-      document.getElementById('resetBtn').addEventListener('click', resetTimer);
-      document.getElementById('pauseBtn').addEventListener('click', pauseTimer);
 
       async function logTimeToServer() {
         try {
