@@ -6,7 +6,12 @@
 </head>
 <body>
     <div class="auth-container">
-        <h2>Sign Up</h2>
+        <div class="corner-decoration top-left"></div>
+        <div class="corner-decoration top-right"></div>
+        <div class="corner-decoration bottom-left"></div>
+        <div class="corner-decoration bottom-right"></div>
+        
+        <h2>{% if request.endpoint == 'login' %}Enter the Darkness{% else %}Join the Shadows{% endif %}</h2>
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}

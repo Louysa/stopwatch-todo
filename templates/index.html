@@ -8,6 +8,11 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   </head>
   <body>
+    <div class="nav-controls">
+        <a href="{{ url_for('logout') }}" class="logout-btn">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+    </div>
     <div class="user-controls">
       <span>{{ session['user']['email'] }}</span>
       <a href="{{ url_for('logout') }}" class="btn">Logout</a>
@@ -67,51 +72,21 @@
     </div>
 
     <!-- Time Logs Popup -->
-    <div id="logsPopup" class="popup">
-      <div class="popup-content">
-        <h2 class="gothic-subtitle">Time Logs</h2>
-        <div class="stats-list">
-          {% for stat in stats %}
-          <div class="stat-item">
-            <span class="stat-date">{{ stat.date }}</span>
-            <span class="stat-duration">
-              {% set hours = (stat.total_duration / 3600)|int %}
-              {% set minutes = ((stat.total_duration % 3600) / 60)|int %}
-              {% if hours > 0 %}
-                {{ hours }} hour{% if hours != 1 %}s{% endif %}
-                {% if minutes > 0 %} and {{ minutes }} minute{% if minutes != 1 %}s{% endif %}{% endif %}
-              {% else %}
-                {{ minutes }} minute{% if minutes != 1 %}s{% endif %}
-              {% endif %}
-            </span>
-            <span class="stat-sessions">{{ stat.sessions }} sessions</span>
-          </div>
-          {% endfor %}
+    <div class="popup" id="logsPopup">
+        <div class="popup-header">
+            <h3>Time Logs</h3>
+            <button class="close-popup-btn" onclick="closePopup()">&times;</button>
         </div>
-        <div class="time-logs-list">
-          {% for log in time_logs %}
-          <div class="time-log-item">
-            <span class="log-date">{{ log.date }}</span>
-            <span class="log-duration">
-                {% set minutes = (log.duration // 60) %}
-                {% set seconds = (log.duration % 60) %}
-                {{ minutes }}m {{ seconds }}s
-            </span>
-          </div>
-          {% endfor %}
+        <div class="time-logs-container">
+            <!-- Logs will be populated here -->
         </div>
-        <button class="close-popup gothic-btn">
-          <i class="fas fa-times"></i>
-          <span>Close</span>
-        </button>
-      </div>
     </div>
 
+    <!-- Overlay for popup -->
+    <div class="overlay" id="overlay"></div>
+
     <script>
-      let startTime = null;
-      let intervalId = null;
-      let time = 0;
-      let isPaused = false;
+      let startTime, intervalId, time = 0, isPaused = false;
       let activeTime = 0;
       let lastResumeTime = null;
       
@@ -123,41 +98,101 @@
       // Popup functionality
       const logsBtn = document.getElementById('logsBtn');
       const logsPopup = document.getElementById('logsPopup');
-      const closeButtons = document.querySelectorAll('.close-popup');
+      const overlay = document.getElementById('overlay');
 
-      logsBtn.addEventListener('click', () => {
-        logsPopup.classList.add('show');
-      });
-
-      closeButtons.forEach(button => {
-        button.addEventListener('click', () => {
-          logsPopup.classList.remove('show');
-        });
-      });
-
-      // Close popups when clicking outside
-      window.addEventListener('click', (e) => {
-        if (e.target === logsPopup) {
-          logsPopup.classList.remove('show');
-        }
-      });
-
-      function updateDisplay() {
-        const minutes = Math.floor(time / 60);
-        const seconds = time % 60;
-        timeDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      function showPopup() {
+        logsPopup.classList.add('active');
+        overlay.classList.add('active');
+        getTimeLogs(); // Fetch and display logs when popup opens
       }
 
-      function startTimer() {
-        if (!intervalId) {
-          startTime = new Date();
-          time = 0;
-          intervalId = setInterval(() => {
-            time++;
-            updateDisplay();
-          }, 1000);
-          enterFullScreen();
+      function closePopup() {
+        logsPopup.classList.remove('active');
+        overlay.classList.remove('active');
+      }
+
+      // Time logs functionality
+      async function getTimeLogs() {
+        try {
+          const response = await fetch('/get_logs');
+          if (!response.ok) {
+            throw new Error('Failed to fetch logs');
+          }
+          
+          const logs = await response.json();
+          displayLogs(logs);
+        } catch (error) {
+          console.error('Error fetching logs:', error);
+          displayError('Failed to load time logs');
         }
+      }
+
+      function displayLogs(logs) {
+        const container = document.querySelector('.time-logs-container');
+        container.innerHTML = ''; // Clear existing logs
+        
+        if (logs.length === 0) {
+          container.innerHTML = '<div class="no-logs">No time logs found</div>';
+          return;
+        }
+
+        logs.forEach(log => {
+          const logElement = document.createElement('div');
+          logElement.className = 'time-log-item';
+          
+          // Format the date
+          const date = new Date(log.date).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+          });
+          
+          // Format the duration
+          const hours = Math.floor(log.duration / 3600);
+          const minutes = Math.floor((log.duration % 3600) / 60);
+          const seconds = log.duration % 60;
+          const duration = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+          
+          logElement.innerHTML = `
+            <span class="log-date">${date}</span>
+            <span class="log-duration">${duration}</span>
+          `;
+          
+          container.appendChild(logElement);
+        });
+      }
+
+      function displayError(message) {
+        const container = document.querySelector('.time-logs-container');
+        container.innerHTML = `<div class="error-message">${message}</div>`;
+      }
+
+      // Event Listeners
+      document.querySelector('.logs-btn').addEventListener('click', showPopup);
+      overlay.addEventListener('click', closePopup);
+
+      function startTimer() {
+        startTime = new Date().getTime();
+        intervalId = setInterval(updateTimer, 1000);
+        isPaused = false;
+      }
+
+      function updateTimer() {
+        if (!isPaused) {
+          time++;
+          updateDisplay();
+        }
+      }
+
+      function updateDisplay() {
+        const hours = Math.floor(time / 3600);
+        const minutes = Math.floor((time % 3600) / 60);
+        const seconds = time % 60;
+        timeDisplay.textContent = formatTime(hours, minutes, seconds);
+      }
+
+      function formatTime(hours, minutes, seconds) {
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
       }
 
       function pauseTimer() {
@@ -191,25 +226,26 @@
       }
 
       async function logTimeToServer() {
-        if (!startTime) return;
-        
-        const endTime = new Date();
-        
         try {
-          const response = await fetch('/api/time-logs', {
+          const endTime = new Date().getTime();
+          const response = await fetch('/log_time', {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json'
+              'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              start_time: startTime.toISOString(),
-              end_time: endTime.toISOString(),
-              duration: time // Actual seconds counted
+              startTime: startTime,
+              endTime: endTime,
+              duration: time // Send the actual seconds counted
             })
           });
           
-          if (!response.ok) {
-            throw new Error('Failed to log time');
+          if (response.ok) {
+            console.log('Time logged successfully');
+            // Refresh the logs display
+            getTimeLogs();
+          } else {
+            console.error('Failed to log time');
           }
         } catch (error) {
           console.error('Error logging time:', error);

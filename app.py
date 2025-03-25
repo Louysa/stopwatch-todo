@@ -92,13 +92,14 @@ def log_time():
             "start_time": datetime.fromtimestamp(data["startTime"] / 1000).isoformat(),
             "end_time": datetime.fromtimestamp(data["endTime"] / 1000).isoformat(),
             "date": datetime.now().date().isoformat(),
-            "duration": data["duration"],
+            "duration": data["duration"],  # This is now in seconds
             "user_id": session['user']['id']
         }
         
         result = supabase.table('time_logs').insert(time_log).execute()
         return jsonify({"success": True})
     except Exception as e:
+        print(f"Error logging time: {str(e)}")  # Add logging for debugging
         return jsonify({"error": str(e)}), 500
 
 @app.route("/get_logs")
@@ -108,11 +109,12 @@ def get_logs():
         result = supabase.table('time_logs')\
             .select("*")\
             .eq('user_id', session['user']['id'])\
-            .order('date', desc=True)\
+            .order('created_at', desc=True)\
             .execute()
         
         return jsonify(result.data)
     except Exception as e:
+        print(f"Error getting logs: {str(e)}")  # Add logging for debugging
         return jsonify({"error": str(e)}), 500
 
 # Health check endpoint for Vercel
