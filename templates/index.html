@@ -427,17 +427,20 @@
       const addTodoBtn = document.getElementById('submitBtn');
       const todoList = document.getElementById('todoList');
 
+      // Remove the onclick attribute from the button in HTML
+      addTodoBtn.removeAttribute('onclick');
+
       // Add event listener for Enter key
       todoInput.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
-          e.preventDefault(); // Prevent form submission
+          e.preventDefault();
           addTodo();
         }
       });
 
       // Add event listener for button click
       addTodoBtn.addEventListener('click', function(e) {
-        e.preventDefault(); // Prevent form submission
+        e.preventDefault();
         addTodo();
       });
 
@@ -594,13 +597,6 @@
       }
 
       document.querySelectorAll('#todoList li').forEach(setTaskListeners);
-       
-      addTodoBtn.addEventListener('click', addTodo);
-      todoInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-          addTodo();
-        }
-      });
 
       // Update your timer stop function
       async function stopTimer() {

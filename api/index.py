@@ -288,19 +288,21 @@ def delete_task(task_id):
         if not user_id:
             return jsonify({'error': 'User not authenticated'}), 401
 
-        print(f"Deleting task {task_id} for user {user_id}")
-        
-        # Delete task for the current user
-        response = supabase.table('tasks').delete().eq('id', task_id).eq('user_id', user_id).execute()
+        # Use the global supabase client since RLS is disabled
+        response = supabase.table('tasks').delete().eq('id', task_id).execute()
         
         if not response.data:
             return jsonify({'error': 'Task not found'}), 404
             
-        print(f"Task deleted successfully")
-        return jsonify({'message': 'Task deleted successfully'})
+        return jsonify({'success': True})
     except Exception as e:
-        print(f"Error in delete_task: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        print(f"Error deleting task: {str(e)}")
+        return jsonify({
+            'error': str(e),
+            'details': getattr(e, 'details', None),
+            'hint': getattr(e, 'hint', None),
+            'code': getattr(e, 'code', None)
+        }), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
