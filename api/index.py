@@ -218,20 +218,37 @@ def create_task():
         
         # Get a fresh Supabase client with the current session
         current_supabase = get_supabase()
+        
+        # Set the session with the access token
         if session.get('access_token'):
             current_supabase.auth.set_session(session['access_token'], session.get('refresh_token'))
+            print(f"Session set with access token: {session['access_token'][:10]}...")
         
         # Print the task data for debugging
         print(f"Task data being sent to Supabase: {task_data}")
         
-        response = current_supabase.table('tasks').insert(task_data).execute()
-        
-        if not response.data:
-            print("No data returned from Supabase insert")
-            return jsonify({'error': 'Failed to create task'}), 500
+        # Try to insert the task
+        try:
+            response = current_supabase.table('tasks').insert(task_data).execute()
+            print(f"Supabase response: {response}")
             
-        print(f"Task created successfully: {response.data[0]}")
-        return jsonify(response.data[0])
+            if not response.data:
+                print("No data returned from Supabase insert")
+                return jsonify({'error': 'Failed to create task'}), 500
+                
+            print(f"Task created successfully: {response.data[0]}")
+            return jsonify(response.data[0])
+        except Exception as e:
+            print(f"Supabase insert error: {str(e)}")
+            # Check if it's an authentication error
+            if hasattr(e, 'code') and e.code == '42501':
+                return jsonify({
+                    'error': 'Authentication error. Please try logging in again.',
+                    'code': e.code,
+                    'message': str(e)
+                }), 401
+            raise e
+            
     except Exception as e:
         print(f"Error in create_task: {str(e)}")
         # Return more detailed error information
@@ -240,7 +257,8 @@ def create_task():
             'details': getattr(e, 'details', None),
             'hint': getattr(e, 'hint', None),
             'code': getattr(e, 'code', None),
-            'session_user_id': session.get('user_id')
+            'session_user_id': session.get('user_id'),
+            'has_access_token': bool(session.get('access_token'))
         }), 500
 
 @app.route('/api/tasks/<int:task_id>', methods=['PUT'])
