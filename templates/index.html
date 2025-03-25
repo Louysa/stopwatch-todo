@@ -208,6 +208,28 @@
         }
       }
 
+      function resetTimer() {
+        time = 0;
+        updateDisplay();
+        isPaused = false;
+        intervalId = null;
+        startTime = null;
+        exitFullScreen();
+      }
+
+      async function endTimer() {
+        if (intervalId) {
+          clearInterval(intervalId);
+          const endTime = Date.now();
+          try {
+            await logTimeToServer(startTime, endTime, time);
+            resetTimer();
+          } catch (error) {
+            alert('Failed to save your time. Please try again.');
+          }
+        }
+      }
+
       function enterFullScreen() {
         container.classList.add('fullscreen');
         title.style.display = 'none';
