@@ -147,7 +147,7 @@
 
       function startTimer() {
         if (!intervalId) {
-          startTime = new Date();
+          startTime = Date.now();
           time = 0;
           intervalId = setInterval(() => {
             time++;
