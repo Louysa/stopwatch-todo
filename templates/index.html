@@ -52,7 +52,7 @@
     <div class="container">
       <h1 class="gothic-title">Sude Kronometre</h1>
       <div class="stopwatch-container">
-        <div class="time-display">00:00:00</div>
+        <div class="time-display">00:00</div>
         <div class="controls">
           <button id="startBtn" class="gothic-btn">
             <i class="fas fa-play"></i>
@@ -88,16 +88,10 @@
           {% for log in time_logs %}
           <div class="time-log-item">
             <span class="log-date">{{ log.date }}</span>
-            <span class="log-time">{{ log.start_time_formatted }} - {{ log.end_time_formatted }}</span>
             <span class="log-duration">
-              {% set hours = (log.duration / 3600)|int %}
-              {% set minutes = ((log.duration % 3600) / 60)|int %}
-              {% if hours > 0 %}
-                {{ hours }} hour{% if hours != 1 %}s{% endif %}
-                {% if minutes > 0 %} and {{ minutes }} minute{% if minutes != 1 %}s{% endif %}{% endif %}
-              {% else %}
-                {{ minutes }} minute{% if minutes != 1 %}s{% endif %}
-              {% endif %}
+                {% set minutes = (log.duration // 60) %}
+                {% set seconds = (log.duration % 60) %}
+                {{ minutes }}m {{ seconds }}s
             </span>
           </div>
           {% endfor %}
@@ -145,107 +139,51 @@
       });
 
       function updateDisplay() {
-        const hours = Math.floor(time / 3600);
-        const minutes = Math.floor((time % 3600) / 60);
+        const minutes = Math.floor(time / 60);
         const seconds = time % 60;
-        timeDisplay.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        timeDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
       }
 
-      function enterFullScreen() {
-        container.classList.add('fullscreen');
-        title.style.display = 'none';
-        startBtn.style.display = 'none';
-        timeDisplay.classList.add('fullscreen-timer');
-        
-        try {
-          if (document.documentElement.requestFullscreen) {
-            document.documentElement.requestFullscreen().catch(err => {
-              console.log('Fullscreen request failed:', err);
-            });
-          } else if (document.documentElement.webkitRequestFullscreen) {
-            document.documentElement.webkitRequestFullscreen().catch(err => {
-              console.log('Fullscreen request failed:', err);
-            });
-          }
-        } catch (err) {
-          console.log('Fullscreen error:', err);
+      function startTimer() {
+        if (!intervalId) {
+          startTime = new Date();
+          time = 0;
+          intervalId = setInterval(() => {
+            time++;
+            updateDisplay();
+          }, 1000);
+          enterFullScreen();
         }
-        
-        // Create and show stop and reset buttons
-        const controls = container.querySelector('.controls');
-        controls.innerHTML = '';
-        
-        const stopBtn = document.createElement('button');
-        stopBtn.id = 'stopBtn';
-        stopBtn.className = 'gothic-btn stop-btn';
-        stopBtn.innerHTML = '<i class="fas fa-pause"></i><span>Stop</span>';
-        controls.appendChild(stopBtn);
-        
-        const resetBtn = document.createElement('button');
-        resetBtn.id = 'resetBtn';
-        resetBtn.className = 'gothic-btn reset-btn';
-        resetBtn.innerHTML = '<i class="fas fa-stop"></i><span>End</span>';
-        controls.appendChild(resetBtn);
-        
-        stopBtn.addEventListener('click', () => {
-          if (!isPaused) {
-            // Pause display
-            clearInterval(intervalId);
-            intervalId = null;
-            isPaused = true;
-            stopBtn.innerHTML = '<i class="fas fa-play"></i><span>Resume</span>';
-          } else {
-            // Resume display
-            intervalId = setInterval(() => {
-              time++;
-              updateDisplay();
-            }, 1000);
-            isPaused = false;
-            stopBtn.innerHTML = '<i class="fas fa-pause"></i><span>Stop</span>';
-          }
-        });
-        
-        resetBtn.addEventListener('click', () => {
+      }
+
+      function pauseTimer() {
+        if (intervalId && !isPaused) {
           clearInterval(intervalId);
           intervalId = null;
+          isPaused = true;
+          document.getElementById('stopBtn').innerHTML = '<i class="fas fa-play"></i><span>Resume</span>';
+        }
+      }
+
+      function resumeTimer() {
+        if (isPaused) {
+          intervalId = setInterval(() => {
+            time++;
+            updateDisplay();
+          }, 1000);
           isPaused = false;
+          document.getElementById('stopBtn').innerHTML = '<i class="fas fa-pause"></i><span>Stop</span>';
+        }
+      }
+
+      function endTimer() {
+        if (intervalId || isPaused) {
+          clearInterval(intervalId);
+          intervalId = null;
           logTimeToServer().then(() => {
             exitFullScreen();
           });
-        });
-      }
-
-      function exitFullScreen() {
-        try {
-          if (document.exitFullscreen) {
-            document.exitFullscreen().catch(err => {
-              console.log('Exit fullscreen failed:', err);
-            });
-          } else if (document.webkitExitFullscreen) {
-            document.webkitExitFullscreen().catch(err => {
-              console.log('Exit fullscreen failed:', err);
-            });
-          }
-        } catch (err) {
-          console.log('Exit fullscreen error:', err);
         }
-        
-        // Reset container and show Start button
-        container.classList.remove('fullscreen');
-        title.style.display = 'block';
-        startBtn.style.display = 'inline-block'; // Make sure Start button is visible
-        timeDisplay.classList.remove('fullscreen-timer');
-        
-        // Remove stop and reset buttons
-        const stopBtn = document.getElementById('stopBtn');
-        const resetBtn = document.getElementById('resetBtn');
-        if (stopBtn) stopBtn.remove();
-        if (resetBtn) resetBtn.remove();
-        
-        // Reset timer state
-        time = 0;
-        updateDisplay();
-        isPaused = false;
       }
 
       async function logTimeToServer() {
@@ -262,7 +200,7 @@
             body: JSON.stringify({
               start_time: startTime.toISOString(),
               end_time: endTime.toISOString(),
-              duration: time // Use the actual timer value instead of calculating from timestamps
+              duration: time // Actual seconds counted
             })
           });
           
@@ -273,17 +211,93 @@
           console.error('Error logging time:', error);
         }
       }
-      
-      // Stopwatch functionality  
-      startBtn.addEventListener('click', () => {
-        if (!intervalId) {
-          startTime = new Date();
-          time = 0;
-          intervalId = setInterval(() => {
-            time++;
-            updateDisplay();
-          }, 1000);
-          enterFullScreen();
+
+      function enterFullScreen() {
+        container.classList.add('fullscreen');
+        title.style.display = 'none';
+        startBtn.style.display = 'none';
+        timeDisplay.classList.add('fullscreen-timer');
+        
+        try {
+          if (document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen();
+          } else if (document.documentElement.webkitRequestFullscreen) {
+            document.documentElement.webkitRequestFullscreen();
+          }
+        } catch (err) {
+          console.log('Fullscreen error:', err);
+        }
+        
+        const controls = container.querySelector('.controls');
+        controls.innerHTML = '';
+        
+        const stopBtn = document.createElement('button');
+        stopBtn.id = 'stopBtn';
+        stopBtn.className = 'btn stop-btn';
+        stopBtn.innerHTML = '<i class="fas fa-pause"></i><span>Stop</span>';
+        controls.appendChild(stopBtn);
+        
+        const resetBtn = document.createElement('button');
+        resetBtn.id = 'resetBtn';
+        resetBtn.className = 'btn reset-btn';
+        resetBtn.innerHTML = '<i class="fas fa-stop"></i><span>End</span>';
+        controls.appendChild(resetBtn);
+        
+        stopBtn.addEventListener('click', () => {
+          if (!isPaused) {
+            pauseTimer();
+          } else {
+            resumeTimer();
+          }
+        });
+        
+        resetBtn.addEventListener('click', endTimer);
+      }
+
+      function exitFullScreen() {
+        try {
+          if (document.exitFullscreen) {
+            document.exitFullscreen();
+          } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+          }
+        } catch (err) {
+          console.log('Exit fullscreen error:', err);
+        }
+        
+        container.classList.remove('fullscreen');
+        title.style.display = 'block';
+        startBtn.style.display = 'inline-block';
+        timeDisplay.classList.remove('fullscreen-timer');
+        
+        const stopBtn = document.getElementById('stopBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        if (stopBtn) stopBtn.remove();
+        if (resetBtn) resetBtn.remove();
+        
+        time = 0;
+        updateDisplay();
+        isPaused = false;
+        intervalId = null;
+      }
+
+      // Event Listeners
+      document.getElementById('startBtn').addEventListener('click', startTimer);
+
+      document.addEventListener('keydown', function(event) {
+        if (event.code === 'Space' && !event.repeat && document.hasFocus()) {
+          event.preventDefault();
+          
+          if (!intervalId && !isPaused) {
+            // Start timer if it's not running
+            startTimer();
+          } else if (intervalId && !isPaused) {
+            // Pause if timer is running
+            pauseTimer();
+          } else if (isPaused) {
+            // Resume if timer is paused
+            resumeTimer();
+          }
         }
       });
 
@@ -404,41 +418,6 @@
       todoInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
           addTodo();
-        }
-      });
-
-      // Update the keyboard event listener
-      document.addEventListener('keydown', function(event) {
-        if (event.code === 'Space' && !event.repeat && document.hasFocus()) {
-          event.preventDefault();
-          
-          if (!intervalId) {
-            // Start timer
-            startTime = new Date();
-            time = 0;
-            intervalId = setInterval(() => {
-              time++;
-              updateDisplay();
-            }, 1000);
-            enterFullScreen();
-          } else {
-            // Just pause/resume the display, but keep tracking total time
-            if (isPaused) {
-              // Resume display
-              intervalId = setInterval(() => {
-                time++;
-                updateDisplay();
-              }, 1000);
-              isPaused = false;
-              document.getElementById('stopBtn').innerHTML = '<i class="fas fa-pause"></i><span>Stop</span>';
-            } else {
-              // Pause display
-              clearInterval(intervalId);
-              intervalId = null;
-              isPaused = true;
-              document.getElementById('stopBtn').innerHTML = '<i class="fas fa-play"></i><span>Resume</span>';
-            }
-          }
         }
       });
     </script>
