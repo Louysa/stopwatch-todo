@@ -17,7 +17,10 @@ supabase = create_client(supabase_url, supabase_key)
 @app.route('/')
 def index():
     device_id = request.cookies.get('device_id')
-    response = make_response(render_template('index.html'))
+    response = make_response(render_template('index.html', 
+        title="Gothic Stopwatch",  # Keep your gothic themed title
+        panel_title="Tasks of the Night"  # Keep your gothic themed panel title
+    ))
     
     if not device_id:
         device_id = str(uuid.uuid4())
@@ -35,11 +38,13 @@ def login():
                 "email": email,
                 "password": password
             })
-            # Handle successful login
             return redirect(url_for('index'))
         except Exception as e:
-            return render_template('login.html', error="Invalid credentials")
-    return render_template('login.html')
+            return render_template('login.html', 
+                error="Invalid credentials",
+                title="Gothic Login"  # Keep gothic theme in login
+            )
+    return render_template('login.html', title="Gothic Login")
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -51,11 +56,13 @@ def signup():
                 "email": email,
                 "password": password
             })
-            # Handle successful signup
             return redirect(url_for('login'))
         except Exception as e:
-            return render_template('signup.html', error="Signup failed")
-    return render_template('signup.html')
+            return render_template('signup.html', 
+                error="Signup failed",
+                title="Gothic Signup"  # Keep gothic theme in signup
+            )
+    return render_template('signup.html', title="Gothic Signup")
 
 @app.route('/logout')
 def logout():
@@ -82,7 +89,7 @@ def log_time():
         }
         
         result = supabase.table('time_logs').insert(time_log).execute()
-        return jsonify({"success": True})
+        return jsonify({"success": True, "message": "Time logged in the shadows"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
