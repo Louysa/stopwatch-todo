@@ -574,29 +574,52 @@
         const taskText = li.querySelector('.task-text');
 
         checkbox.addEventListener('change', async () => {
-          try{
-            await fetch(`/api/tasks/${li.dataset.id}/toggle`,{
+          try {
+            const response = await fetch(`/api/tasks/${li.dataset.id}/toggle`, {
               method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              }
             });
-            taskText.classList.toggle('completed');
+            
+            if (!response.ok) {
+              throw new Error('Failed to toggle task');
+            }
+            
+            const data = await response.json();
+            taskText.classList.toggle('completed', data.completed);
           } catch (error) {
             console.error('Error toggling task:', error);
+            // Revert checkbox state on error
+            checkbox.checked = !checkbox.checked;
           }
         });
 
         deleteBtn.addEventListener('click', async () => {
-          try{
-            await fetch(`/api/tasks/${li.dataset.id}`,{
-              method: 'DELETE',
+          try {
+            const response = await fetch(`/api/tasks/${li.dataset.id}`, {
+              method: 'DELETE'
             });
+            
+            if (!response.ok) {
+              throw new Error('Failed to delete task');
+            }
+            
             li.remove();
           } catch (error) {
             console.error('Error deleting task:', error);
+            alert('Failed to delete task. Please try again.');
           }
         });
       }
 
-      document.querySelectorAll('#todoList li').forEach(setTaskListeners);
+      // Load tasks when the page loads
+      document.addEventListener('DOMContentLoaded', () => {
+        const todoList = document.getElementById('todoList');
+        if (todoList) {
+          document.querySelectorAll('#todoList li').forEach(setTaskListeners);
+        }
+      });
 
       // Update your timer stop function
       async function stopTimer() {

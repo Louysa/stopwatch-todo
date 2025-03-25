@@ -57,10 +57,19 @@ def index():
     # Check if user is authenticated
     if not session.get('user_id'):
         return redirect(url_for('login'))
+    
+    # Get tasks for the current user
+    try:
+        response = supabase.table('tasks').select('*').eq('user_id', session.get('user_id')).order('created_at', desc=True).execute()
+        tasks = response.data
+    except Exception as e:
+        print(f"Error loading tasks: {str(e)}")
+        tasks = []
         
     response = make_response(render_template('index.html', 
         title="Gothic Stopwatch",
-        panel_title="Tasks of the Night"
+        panel_title="Tasks of the Night",
+        tasks=tasks
     ))
     return response
 
@@ -303,6 +312,30 @@ def delete_task(task_id):
             'hint': getattr(e, 'hint', None),
             'code': getattr(e, 'code', None)
         }), 500
+
+@app.route('/api/tasks/<int:task_id>/toggle', methods=['POST'])
+def toggle_task(task_id):
+    try:
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
+        # Get current task state
+        task = supabase.table('tasks').select('completed').eq('id', task_id).execute()
+        if not task.data:
+            return jsonify({'error': 'Task not found'}), 404
+
+        # Toggle the completed state
+        new_state = not task.data[0]['completed']
+        response = supabase.table('tasks').update({'completed': new_state}).eq('id', task_id).execute()
+        
+        if not response.data:
+            return jsonify({'error': 'Failed to update task'}), 500
+            
+        return jsonify(response.data[0])
+    except Exception as e:
+        print(f"Error in toggle_task: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
