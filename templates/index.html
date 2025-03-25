@@ -54,7 +54,7 @@
       <div class="stopwatch-container">
         <div class="time-display">00:00:00</div>
         <div class="controls">
-          <button id="startBtn" class="gothic-btn">
+          <button id="startBtn" class="btn">
             <i class="fas fa-play"></i>
             <span>Start</span>
           </button>
@@ -230,16 +230,21 @@
           console.log('Exit fullscreen error:', err);
         }
         
+        // Reset container and show Start button
         container.classList.remove('fullscreen');
         title.style.display = 'block';
-        startBtn.style.display = 'block';
+        startBtn.style.display = 'inline-block'; // Make sure Start button is visible
         timeDisplay.classList.remove('fullscreen-timer');
         
+        // Remove stop and reset buttons
         const stopBtn = document.getElementById('stopBtn');
         const resetBtn = document.getElementById('resetBtn');
         if (stopBtn) stopBtn.remove();
         if (resetBtn) resetBtn.remove();
         
+        // Reset timer state
+        time = 0;
+        updateDisplay();
         isPaused = false;
       }
 
@@ -248,28 +253,24 @@
         
         const endTime = new Date();
         
-        // If timer is running, add the current active period
-        if (!isPaused && lastResumeTime) {
-            activeTime += (endTime - lastResumeTime) / 1000;
-        }
-        
-        // Round to nearest second
-        const totalActiveTime = Math.floor(activeTime);
-        
         try {
-            const response = await fetch('/api/time-logs', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    start_time: startTime.toISOString(),
-                    end_time: endTime.toISOString(),
-                    duration: totalActiveTime
-                })
-            });
+          const response = await fetch('/api/time-logs', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              start_time: startTime.toISOString(),
+              end_time: endTime.toISOString(),
+              duration: time // Use the actual timer value instead of calculating from timestamps
+            })
+          });
+          
+          if (!response.ok) {
+            throw new Error('Failed to log time');
+          }
         } catch (error) {
-            console.error('Error logging time:', error);
+          console.error('Error logging time:', error);
         }
       }
       
@@ -277,8 +278,6 @@
       startBtn.addEventListener('click', () => {
         if (!intervalId) {
           startTime = new Date();
-          lastResumeTime = startTime;
-          activeTime = 0;
           time = 0;
           intervalId = setInterval(() => {
             time++;
