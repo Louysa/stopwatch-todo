@@ -1,31 +1,40 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gothic Login</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&family=Crimson+Text:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
     <div class="auth-container">
-        <h2>Login</h2>
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="alert">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-        <form method="POST" action="{{ url_for('login') }}">
-            <div class="form-group">
-                <input type="email" name="email" placeholder="Email" required>
-            </div>
-            <div class="form-group">
-                <input type="password" name="password" placeholder="Password" required>
-            </div>
-            <button type="submit" class="btn">Login</button>
-        </form>
-        <p>Don't have an account? <a href="{{ url_for('signup') }}">Sign up</a></p>
+        <h1 class="gothic-title">Welcome Back</h1>
+        <div class="auth-box">
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            <form method="POST" action="{{ url_for('login') }}" class="auth-form">
+                <div class="form-group">
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" name="email" placeholder="Email" required>
+                </div>
+                <div class="form-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" name="password" placeholder="Password" required>
+                </div>
+                <button type="submit" class="gothic-btn">
+                    <i class="fas fa-sign-in-alt"></i>
+                    <span>Enter the Darkness</span>
+                </button>
+            </form>
+            <p class="auth-link">Don't have an account? <a href="{{ url_for('signup') }}">Join the Shadows</a></p>
+        </div>
     </div>
 </body>
 </html>
