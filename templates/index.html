@@ -8,11 +8,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   </head>
   <body>
-    <div class="nav-controls">
-        <a href="{{ url_for('logout') }}" class="logout-btn">
-            <i class="fas fa-sign-out-alt"></i> Logout
-        </a>
-    </div>
     <div class="user-controls">
       <span>{{ session['user']['email'] }}</span>
       <a href="{{ url_for('logout') }}" class="btn">Logout</a>
@@ -59,221 +54,162 @@
     </div>
 
     <div class="container">
-      <div id="time">00:00:00</div>
-      <div class="timer-controls">
-        <button id="startBtn" class="btn">Start</button>
-        <button id="pauseBtn" class="btn" style="display: none;">Pause</button>
-        <button id="stopBtn" class="btn" style="display: none;">Stop</button>
-        <button id="resetBtn" class="btn" style="display: none;">Reset</button>
+      <h1 class="gothic-title">Sude Kronometre</h1>
+      <div class="stopwatch-container">
+        <div class="time-display">00:00</div>
+        <div class="controls">
+          <button id="startBtn" class="gothic-btn">
+            <i class="fas fa-play"></i>
+            <span>Start</span>
+          </button>
+        </div>
       </div>
     </div>
 
     <!-- Time Logs Popup -->
-    <div class="popup" id="logsPopup">
-        <div class="popup-header">
-            <h3>Time Logs</h3>
-            <button class="close-popup-btn" onclick="closePopup()">&times;</button>
+    <div id="logsPopup" class="popup">
+      <div class="popup-content">
+        <h2 class="gothic-subtitle">Time Logs</h2>
+        <div class="stats-list">
+          {% for stat in stats %}
+          <div class="stat-item">
+            <span class="stat-date">{{ stat.date }}</span>
+            <span class="stat-duration">
+              {% set hours = (stat.total_duration / 3600)|int %}
+              {% set minutes = ((stat.total_duration % 3600) / 60)|int %}
+              {% if hours > 0 %}
+                {{ hours }} hour{% if hours != 1 %}s{% endif %}
+                {% if minutes > 0 %} and {{ minutes }} minute{% if minutes != 1 %}s{% endif %}{% endif %}
+              {% else %}
+                {{ minutes }} minute{% if minutes != 1 %}s{% endif %}
+              {% endif %}
+            </span>
+            <span class="stat-sessions">{{ stat.sessions }} sessions</span>
+          </div>
+          {% endfor %}
         </div>
-        <div class="time-logs-container">
-            <!-- Logs will be populated here -->
+        <div class="time-logs-list">
+          {% for log in time_logs %}
+          <div class="time-log-item">
+            <span class="log-date">{{ log.date }}</span>
+            <span class="log-duration">
+                {% set minutes = (log.duration // 60) %}
+                {% set seconds = (log.duration % 60) %}
+                {{ minutes }}m {{ seconds }}s
+            </span>
+          </div>
+          {% endfor %}
         </div>
+        <button class="close-popup gothic-btn">
+          <i class="fas fa-times"></i>
+          <span>Close</span>
+        </button>
+      </div>
     </div>
 
-    <!-- Overlay for popup -->
-    <div class="overlay" id="overlay"></div>
-
     <script>
-      document.addEventListener('DOMContentLoaded', () => {
-        let startTime, intervalId, time = 0, isPaused = false;
-        const timeDisplay = document.getElementById('time');
-        const startBtn = document.getElementById('startBtn');
-        const pauseBtn = document.getElementById('pauseBtn');
-        const stopBtn = document.getElementById('stopBtn');
-        const resetBtn = document.getElementById('resetBtn');
-
-        // Initialize display
-        timeDisplay.textContent = '00:00:00';
-
-        function updateDisplay() {
-          const hours = Math.floor(time / 3600);
-          const minutes = Math.floor((time % 3600) / 60);
-          const seconds = time % 60;
-          timeDisplay.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-        }
-
-        function startTimer() {
-          if (!intervalId) {
-            startTime = new Date().getTime() - (time * 1000);
-            intervalId = setInterval(updateTimer, 1000);
-            isPaused = false;
-            
-            startBtn.style.display = 'none';
-            pauseBtn.style.display = 'inline-block';
-            stopBtn.style.display = 'inline-block';
-            resetBtn.style.display = 'inline-block';
-          }
-        }
-
-        function updateTimer() {
-          if (!isPaused) {
-            time++;
-            updateDisplay();
-          }
-        }
-
-        function pauseTimer() {
-          isPaused = !isPaused;
-          pauseBtn.textContent = isPaused ? 'Resume' : 'Pause';
-        }
-
-        function stopTimer() {
-          if (intervalId) {
-            clearInterval(intervalId);
-            logTimeToServer();
-            intervalId = null;
-            
-            time = 0;
-            updateDisplay();
-            startBtn.style.display = 'inline-block';
-            pauseBtn.style.display = 'none';
-            stopBtn.style.display = 'none';
-            resetBtn.style.display = 'none';
-            pauseBtn.textContent = 'Pause';
-            isPaused = false;
-          }
-        }
-
-        function resetTimer() {
-          time = 0;
-          updateDisplay();
-          if (isPaused) {
-            pauseBtn.textContent = 'Pause';
-            isPaused = false;
-          }
-        }
-
-        // Space key event listener
-        document.addEventListener('keydown', function(event) {
-          if (event.code === 'Space' && document.activeElement.tagName !== 'INPUT') {
-            event.preventDefault();
-            if (!intervalId) {
-              startTimer();
-            } else {
-              pauseTimer();
-            }
-          }
-        });
-
-        // Button event listeners
-        if (startBtn) startBtn.addEventListener('click', startTimer);
-        if (stopBtn) stopBtn.addEventListener('click', stopTimer);
-        if (resetBtn) resetBtn.addEventListener('click', resetTimer);
-        if (pauseBtn) pauseBtn.addEventListener('click', pauseTimer);
-      });
-
+      let startTime = null;
+      let intervalId = null;
+      let time = 0;
+      let isPaused = false;
       let activeTime = 0;
       let lastResumeTime = null;
       
+      const timeDisplay = document.querySelector('.time-display');
+      const startBtn = document.getElementById('startBtn');
       const container = document.querySelector('.container');
       const title = document.querySelector('.gothic-title');
 
       // Popup functionality
       const logsBtn = document.getElementById('logsBtn');
       const logsPopup = document.getElementById('logsPopup');
-      const overlay = document.getElementById('overlay');
+      const closeButtons = document.querySelectorAll('.close-popup');
 
-      function showPopup() {
-        logsPopup.classList.add('active');
-        overlay.classList.add('active');
-        getTimeLogs(); // Fetch and display logs when popup opens
-      }
+      logsBtn.addEventListener('click', () => {
+        logsPopup.classList.add('show');
+      });
 
-      function closePopup() {
-        logsPopup.classList.remove('active');
-        overlay.classList.remove('active');
-      }
-
-      // Time logs functionality
-      async function getTimeLogs() {
-        try {
-          const response = await fetch('/get_logs');
-          if (!response.ok) {
-            throw new Error('Failed to fetch logs');
-          }
-          
-          const logs = await response.json();
-          displayLogs(logs);
-        } catch (error) {
-          console.error('Error fetching logs:', error);
-          displayError('Failed to load time logs');
-        }
-      }
-
-      function displayLogs(logs) {
-        const container = document.querySelector('.time-logs-container');
-        container.innerHTML = ''; // Clear existing logs
-        
-        if (logs.length === 0) {
-          container.innerHTML = '<div class="no-logs">No time logs found</div>';
-          return;
-        }
-
-        logs.forEach(log => {
-          const logElement = document.createElement('div');
-          logElement.className = 'time-log-item';
-          
-          // Format the date
-          const date = new Date(log.date).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-          });
-          
-          // Format the duration
-          const hours = Math.floor(log.duration / 3600);
-          const minutes = Math.floor((log.duration % 3600) / 60);
-          const seconds = log.duration % 60;
-          const duration = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-          
-          logElement.innerHTML = `
-            <span class="log-date">${date}</span>
-            <span class="log-duration">${duration}</span>
-          `;
-          
-          container.appendChild(logElement);
+      closeButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          logsPopup.classList.remove('show');
         });
+      });
+
+      // Close popups when clicking outside
+      window.addEventListener('click', (e) => {
+        if (e.target === logsPopup) {
+          logsPopup.classList.remove('show');
+        }
+      });
+
+      function updateDisplay() {
+        const minutes = Math.floor(time / 60);
+        const seconds = time % 60;
+        timeDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
       }
 
-      function displayError(message) {
-        const container = document.querySelector('.time-logs-container');
-        container.innerHTML = `<div class="error-message">${message}</div>`;
+      function startTimer() {
+        if (!intervalId) {
+          startTime = new Date();
+          time = 0;
+          intervalId = setInterval(() => {
+            time++;
+            updateDisplay();
+          }, 1000);
+          enterFullScreen();
+        }
       }
 
-      // Event Listeners
-      document.querySelector('.logs-btn').addEventListener('click', showPopup);
-      overlay.addEventListener('click', closePopup);
+      function pauseTimer() {
+        if (intervalId && !isPaused) {
+          clearInterval(intervalId);
+          intervalId = null;
+          isPaused = true;
+          document.getElementById('stopBtn').innerHTML = '<i class="fas fa-play"></i><span>Resume</span>';
+        }
+      }
+
+      function resumeTimer() {
+        if (isPaused) {
+          intervalId = setInterval(() => {
+            time++;
+            updateDisplay();
+          }, 1000);
+          isPaused = false;
+          document.getElementById('stopBtn').innerHTML = '<i class="fas fa-pause"></i><span>Stop</span>';
+        }
+      }
+
+      function endTimer() {
+        if (intervalId || isPaused) {
+          clearInterval(intervalId);
+          intervalId = null;
+          logTimeToServer().then(() => {
+            exitFullScreen();
+          });
+        }
+      }
 
       async function logTimeToServer() {
+        if (!startTime) return;
+        
+        const endTime = new Date();
+        
         try {
-          const endTime = new Date().getTime();
-          const response = await fetch('/log_time', {
+          const response = await fetch('/api/time-logs', {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
+              'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-              startTime: startTime,
-              endTime: endTime,
-              duration: time // Send the actual seconds counted
+              start_time: startTime.toISOString(),
+              end_time: endTime.toISOString(),
+              duration: time // Actual seconds counted
             })
           });
           
-          if (response.ok) {
-            console.log('Time logged successfully');
-            // Refresh the logs display
-            getTimeLogs();
-          } else {
-            console.error('Failed to log time');
+          if (!response.ok) {
+            throw new Error('Failed to log time');
           }
         } catch (error) {
           console.error('Error logging time:', error);
@@ -296,15 +232,17 @@
           console.log('Fullscreen error:', err);
         }
         
-        const controls = container.querySelector('.timer-controls');
+        const controls = container.querySelector('.controls');
         controls.innerHTML = '';
         
         const stopBtn = document.createElement('button');
+        stopBtn.id = 'stopBtn';
         stopBtn.className = 'btn stop-btn';
         stopBtn.innerHTML = '<i class="fas fa-pause"></i><span>Stop</span>';
         controls.appendChild(stopBtn);
         
         const resetBtn = document.createElement('button');
+        resetBtn.id = 'resetBtn';
         resetBtn.className = 'btn reset-btn';
         resetBtn.innerHTML = '<i class="fas fa-stop"></i><span>End</span>';
         controls.appendChild(resetBtn);
@@ -336,8 +274,8 @@
         startBtn.style.display = 'inline-block';
         timeDisplay.classList.remove('fullscreen-timer');
         
-        const stopBtn = document.querySelector('.stop-btn');
-        const resetBtn = document.querySelector('.reset-btn');
+        const stopBtn = document.getElementById('stopBtn');
+        const resetBtn = document.getElementById('resetBtn');
         if (stopBtn) stopBtn.remove();
         if (resetBtn) resetBtn.remove();
         
@@ -346,6 +284,26 @@
         isPaused = false;
         intervalId = null;
       }
+
+      // Event Listeners
+      document.getElementById('startBtn').addEventListener('click', startTimer);
+
+      document.addEventListener('keydown', function(event) {
+        if (event.code === 'Space' && !event.repeat && document.hasFocus()) {
+          event.preventDefault();
+          
+          if (!intervalId && !isPaused) {
+            // Start timer if it's not running
+            startTimer();
+          } else if (intervalId && !isPaused) {
+            // Pause if timer is running
+            pauseTimer();
+          } else if (isPaused) {
+            // Resume if timer is paused
+            resumeTimer();
+          }
+        }
+      });
 
       // Tasks panel functionality with local storage
       const tasksBtn = document.getElementById('tasksBtn');

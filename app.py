@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash
 from supabase import create_client
-from datetime import datetime, timedelta
+from datetime import datetime
 import os
 from functools import wraps
 
@@ -11,10 +11,6 @@ app.secret_key = os.environ.get('SECRET_KEY', os.urandom(24).hex())
 supabase_url = os.environ.get("SUPABASE_URL")
 supabase_key = os.environ.get("SUPABASE_KEY")
 supabase = create_client(supabase_url, supabase_key)
-
-# Configure session to use filesystem
-app.config['SESSION_TYPE'] = 'filesystem'
-app.permanent_session_lifetime = timedelta(days=30)
 
 # Login required decorator
 def login_required(f):
@@ -35,7 +31,6 @@ def login():
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
-        remember = request.form.get('remember')
         
         try:
             auth_response = supabase.auth.sign_in_with_password({
@@ -46,15 +41,9 @@ def login():
                 'id': auth_response.user.id,
                 'email': auth_response.user.email
             }
-            
-            # Set session permanent if remember me is checked
-            if remember:
-                session.permanent = True
-                app.permanent_session_lifetime = timedelta(days=30)
-            
             return redirect(url_for('index'))
         except Exception as e:
-            flash('Invalid login credentials', 'error')
+            flash('Invalid login credentials')
             return render_template('login.html')
     
     return render_template('login.html')
@@ -92,14 +81,13 @@ def log_time():
             "start_time": datetime.fromtimestamp(data["startTime"] / 1000).isoformat(),
             "end_time": datetime.fromtimestamp(data["endTime"] / 1000).isoformat(),
             "date": datetime.now().date().isoformat(),
-            "duration": data["duration"],  # This is now in seconds
+            "duration": data["duration"],
             "user_id": session['user']['id']
         }
         
         result = supabase.table('time_logs').insert(time_log).execute()
         return jsonify({"success": True})
     except Exception as e:
-        print(f"Error logging time: {str(e)}")  # Add logging for debugging
         return jsonify({"error": str(e)}), 500
 
 @app.route("/get_logs")
@@ -109,12 +97,11 @@ def get_logs():
         result = supabase.table('time_logs')\
             .select("*")\
             .eq('user_id', session['user']['id'])\
-            .order('created_at', desc=True)\
+            .order('date', desc=True)\
             .execute()
         
         return jsonify(result.data)
     except Exception as e:
-        print(f"Error getting logs: {str(e)}")  # Add logging for debugging
         return jsonify({"error": str(e)}), 500
 
 # Health check endpoint for Vercel
