@@ -125,12 +125,13 @@
       async function loadTimeLogs() {
         try {
           const response = await fetch('/get_logs');
-          const logs = await response.json();
+          const data = await response.json();
           
+          // Update time logs
           const timeLogsList = document.querySelector('.time-logs-list');
           timeLogsList.innerHTML = ''; // Clear existing logs
           
-          logs.forEach(log => {
+          data.logs.forEach(log => {
             const minutes = Math.floor(log.duration / 60);
             const seconds = log.duration % 60;
             const logItem = document.createElement('div');
@@ -140,6 +141,34 @@
               <span class="log-duration">${minutes}m ${seconds}s</span>
             `;
             timeLogsList.appendChild(logItem);
+          });
+
+          // Update daily statistics
+          const statsList = document.querySelector('.stats-list');
+          statsList.innerHTML = ''; // Clear existing stats
+          
+          data.stats.forEach(stat => {
+            const hours = Math.floor(stat.total_duration / 3600);
+            const minutes = Math.floor((stat.total_duration % 3600) / 60);
+            const statItem = document.createElement('div');
+            statItem.className = 'stat-item';
+            
+            let durationText = '';
+            if (hours > 0) {
+              durationText = `${hours} hour${hours !== 1 ? 's' : ''}`;
+              if (minutes > 0) {
+                durationText += ` and ${minutes} minute${minutes !== 1 ? 's' : ''}`;
+              }
+            } else {
+              durationText = `${minutes} minute${minutes !== 1 ? 's' : ''}`;
+            }
+
+            statItem.innerHTML = `
+              <span class="stat-date">${new Date(stat.date).toLocaleDateString()}</span>
+              <span class="stat-duration">${durationText}</span>
+              <span class="stat-sessions">${stat.sessions} session${stat.sessions !== 1 ? 's' : ''}</span>
+            `;
+            statsList.appendChild(statItem);
           });
         } catch (error) {
           console.error('Error loading time logs:', error);
@@ -471,11 +500,9 @@
           const endTime = Date.now();
           try {
             await logTimeToServer(startTime, endTime, time);
-            // Only reset after successful logging
             resetTimer();
           } catch (error) {
             alert('Failed to save your time. Please try again.');
-            // Maybe keep the timer state so they can try saving again
           }
         }
       }

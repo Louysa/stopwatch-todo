@@ -113,17 +113,39 @@ def get_logs():
     try:
         device_id = request.cookies.get('device_id')
         if not device_id:
-            return jsonify([])
+            return jsonify({"logs": [], "stats": []})
             
+        # Get all logs
         result = supabase.table('time_logs')\
             .select("*")\
             .eq('device_id', device_id)\
             .order('start_time', desc=True)\
             .execute()
         
-        return jsonify(result.data)
+        logs = result.data
+
+        # Calculate daily statistics
+        daily_stats = {}
+        for log in logs:
+            date = log['date']
+            if date not in daily_stats:
+                daily_stats[date] = {
+                    'date': date,
+                    'total_duration': 0,
+                    'sessions': 0
+                }
+            daily_stats[date]['total_duration'] += log['duration']
+            daily_stats[date]['sessions'] += 1
+
+        # Convert stats to list and sort by date
+        stats = sorted(daily_stats.values(), key=lambda x: x['date'], reverse=True)
+        
+        return jsonify({
+            "logs": logs,
+            "stats": stats
+        })
     except Exception as e:
-        print(f"Error in get_logs: {str(e)}")  # Debug print
+        print(f"Error in get_logs: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
