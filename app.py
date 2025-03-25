@@ -80,38 +80,33 @@ def log_time():
         if not data:
             return jsonify({"error": "No data provided"}), 400
         
-        # Validate required fields
-        required_fields = ["startTime", "endTime", "duration"]
-        for field in required_fields:
-            if field not in data:
-                return jsonify({"error": f"Missing required field: {field}"}), 400
-
-        # Print debugging information
+        # Debug print
         print("Received data:", data)
-        print("User ID:", session.get('user', {}).get('id'))
+        
+        # Convert timestamps to UTC datetime
+        start_time = datetime.utcfromtimestamp(data["startTime"] / 1000)
+        end_time = datetime.utcfromtimestamp(data["endTime"] / 1000)
         
         time_log = {
-            "start_time": datetime.fromtimestamp(data["startTime"] / 1000).isoformat(),
-            "end_time": datetime.fromtimestamp(data["endTime"] / 1000).isoformat(),
-            "date": datetime.now().date().isoformat(),
-            "duration": data["duration"],
+            "start_time": start_time.isoformat(),
+            "end_time": end_time.isoformat(),
+            "date": datetime.utcnow().date().isoformat(),
+            "duration": int(data["duration"]),
             "user_id": session['user']['id']
         }
         
-        # Print the data being sent to Supabase
-        print("Sending to Supabase:", time_log)
+        # Debug print
+        print("Inserting data:", time_log)
         
         result = supabase.table('time_logs').insert(time_log).execute()
+        print("Insert result:", result)
         
         return jsonify({
             "success": True,
             "data": result.data
         })
-    except KeyError as e:
-        print(f"KeyError: {str(e)}")
-        return jsonify({"error": f"Missing key in session or data: {str(e)}"}), 400
     except Exception as e:
-        print(f"Error in log_time: {str(e)}")
+        print("Error in log_time:", str(e))
         return jsonify({"error": str(e)}), 500
 
 @app.route("/get_logs")
@@ -149,8 +144,8 @@ def health_check():
 @app.route("/debug-connection")
 def debug_connection():
     try:
-        # Test Supabase connection
-        test_query = supabase.table('time_logs').select("count(*)").execute()
+        # Test Supabase connection with correct syntax
+        test_query = supabase.table('time_logs').select('*', count='exact').execute()
         return jsonify({
             "status": "connected",
             "supabase_url_exists": bool(os.environ.get("SUPABASE_URL")),
@@ -164,6 +159,13 @@ def debug_connection():
             "supabase_url_exists": bool(os.environ.get("SUPABASE_URL")),
             "supabase_key_exists": bool(os.environ.get("SUPABASE_KEY"))
         }), 500
+
+@app.route("/check-session")
+def check_session():
+    return jsonify({
+        "authenticated": 'user' in session,
+        "user": session.get('user', None)
+    })
 
 if __name__ == '__main__':
     app.run(debug=True)

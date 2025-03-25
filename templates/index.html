@@ -190,36 +190,39 @@
         }
       }
 
-      async function logTimeToServer() {
-        if (!startTime) return;
-        
-        const endTime = new Date();
-        
+      async function logTimeToServer(startTime, endTime, duration) {
         try {
+          console.log('Sending data:', {
+            startTime: startTime,
+            endTime: endTime,
+            duration: duration
+          });
+
           const response = await fetch('/log_time', {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json'
+              'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              startTime: startTime.toISOString(),
-              endTime: endTime.toISOString(),
-              duration: time // Actual seconds counted
-            })
+              startTime: startTime,
+              endTime: endTime,
+              duration: duration
+            }),
+            credentials: 'same-origin' // Important for session cookies
           });
-          
-          if (!response.ok) {
-            const errorData = await response.json();
-            console.error('Server error:', errorData);
-            throw new Error(`Server responded with ${response.status}: ${errorData.error}`);
-          }
 
           const data = await response.json();
+          
+          if (!response.ok) {
+            console.error('Server error:', data);
+            throw new Error(data.error || 'Failed to log time');
+          }
+
           console.log('Time logged successfully:', data);
           return data;
         } catch (error) {
-          console.error('Error details:', error);
-          throw new Error('Failed to log time: ' + error.message);
+          console.error('Error logging time:', error);
+          throw error;
         }
       }
 
@@ -439,19 +442,30 @@
         const duration = Math.floor((endTime - startTime) / 1000); // duration in seconds
         
         try {
+          console.log('Stopping timer:', {
+            startTime: startTime,
+            endTime: endTime,
+            duration: duration
+          });
+          
           await logTimeToServer(startTime, endTime, duration);
           console.log('Time logged successfully');
         } catch (error) {
           console.error('Error logging time:', error);
-          alert('Failed to save your time. Please try again.');
+          alert('Failed to save your time: ' + error.message);
+        } finally {
+          // Reset timer
+          clearInterval(intervalId);
+          intervalId = null;
+          startTime = null;
+          time = 0;
+          updateDisplay();
+          
+          // Update UI
+          if (document.fullscreenElement) {
+            document.exitFullscreen();
+          }
         }
-        
-        // Reset timer
-        clearInterval(intervalId);
-        intervalId = null;
-        startTime = null;
-        time = 0;
-        updateDisplay();
       }
     </script>
   </body>
