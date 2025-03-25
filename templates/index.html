@@ -57,11 +57,11 @@
       <h1 class="gothic-title">Sude Kronometre</h1>
       <div class="stopwatch-container">
         <div class="time-display">00:00</div>
-        <div class="controls">
-          <button id="startBtn" class="gothic-btn">
-            <i class="fas fa-play"></i>
-            <span>Start</span>
-          </button>
+        <div class="timer-controls">
+          <button id="startBtn" onclick="startTimer()">Start</button>
+          <button id="pauseBtn" onclick="pauseTimer()" style="display: none;">Pause</button>
+          <button id="resumeBtn" onclick="resumeTimer()" style="display: none;">Resume</button>
+          <button id="stopBtn" onclick="endTimer()" style="display: none;">Stop</button>
         </div>
       </div>
     </div>
@@ -112,9 +112,7 @@
       let intervalId = null;
       let time = 0;
       let isPaused = false;
-      let activeTime = 0;
-      let lastResumeTime = null;
-      
+
       const timeDisplay = document.querySelector('.time-display');
       const startBtn = document.getElementById('startBtn');
       const container = document.querySelector('.container');
@@ -142,88 +140,128 @@
         }
       });
 
-      function updateDisplay() {
-        const minutes = Math.floor(time / 60);
-        const seconds = time % 60;
-        timeDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-      }
-
       function startTimer() {
-        if (!intervalId) {
-          startTime = new Date();
-          time = 0;
-          intervalId = setInterval(() => {
-            time++;
-            updateDisplay();
-          }, 1000);
-          enterFullScreen();
-        }
+        if (intervalId) return; // Timer is already running
+        
+        startTime = Date.now() - (time * 1000); // Account for any existing time
+        intervalId = setInterval(updateTime, 1000);
+        isPaused = false;
+        
+        // Update UI
+        document.getElementById('startBtn').style.display = 'none';
+        document.getElementById('pauseBtn').style.display = 'inline';
+        document.getElementById('stopBtn').style.display = 'inline';
       }
 
       function pauseTimer() {
-        if (intervalId && !isPaused) {
-          clearInterval(intervalId);
-          intervalId = null;
-          isPaused = true;
-          document.getElementById('stopBtn').innerHTML = '<i class="fas fa-play"></i><span>Resume</span>';
-        }
+        if (!intervalId) return;
+        
+        clearInterval(intervalId);
+        intervalId = null;
+        isPaused = true;
+        
+        // Update UI
+        document.getElementById('pauseBtn').style.display = 'none';
+        document.getElementById('resumeBtn').style.display = 'inline';
       }
 
       function resumeTimer() {
-        if (isPaused) {
-          intervalId = setInterval(() => {
-            time++;
-            updateDisplay();
-          }, 1000);
-          isPaused = false;
-          document.getElementById('stopBtn').innerHTML = '<i class="fas fa-pause"></i><span>Stop</span>';
-        }
+        if (intervalId) return;
+        
+        startTimer(); // This will update startTime correctly
+        
+        // Update UI
+        document.getElementById('resumeBtn').style.display = 'none';
+        document.getElementById('pauseBtn').style.display = 'inline';
       }
 
-      function endTimer() {
-        if (intervalId || isPaused) {
+      function updateTime() {
+        time = Math.floor((Date.now() - startTime) / 1000);
+        updateDisplay();
+      }
+
+      function updateDisplay() {
+        const hours = Math.floor(time / 3600);
+        const minutes = Math.floor((time % 3600) / 60);
+        const seconds = time % 60;
+        const display = document.getElementById('time');
+        display.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      }
+
+      async function endTimer() {
+        if (startTime === null) {
+          console.log('Timer was never started');
+          return;
+        }
+
+        const endTime = Date.now();
+        const duration = Math.floor((endTime - startTime) / 1000);
+
+        console.log('Ending timer with:', {
+          startTime: startTime,
+          endTime: endTime,
+          duration: duration
+        });
+
+        try {
+          await logTimeToServer(startTime, endTime, duration);
+          console.log('Time logged successfully');
+        } catch (error) {
+          console.error('Error logging time:', error);
+          alert('Failed to save your time: ' + error.message);
+        } finally {
+          // Reset timer
           clearInterval(intervalId);
           intervalId = null;
-          logTimeToServer().then(() => {
-            exitFullScreen();
-          });
+          startTime = null;
+          time = 0;
+          isPaused = false;
+          updateDisplay();
+          
+          // Reset UI
+          document.getElementById('startBtn').style.display = 'inline';
+          document.getElementById('pauseBtn').style.display = 'none';
+          document.getElementById('resumeBtn').style.display = 'none';
+          document.getElementById('stopBtn').style.display = 'none';
+          
+          if (document.fullscreenElement) {
+            document.exitFullscreen();
+          }
         }
       }
 
       async function logTimeToServer(startTime, endTime, duration) {
-        try {
-          console.log('Sending data:', {
+        if (!startTime || !endTime || duration === undefined) {
+          throw new Error('Invalid timer data');
+        }
+
+        console.log('Sending data:', {
+          startTime: startTime,
+          endTime: endTime,
+          duration: duration
+        });
+
+        const response = await fetch('/log_time', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
             startTime: startTime,
             endTime: endTime,
             duration: duration
-          });
+          }),
+          credentials: 'same-origin'
+        });
 
-          const response = await fetch('/log_time', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              startTime: startTime,
-              endTime: endTime,
-              duration: duration
-            }),
-            credentials: 'same-origin' // Important for session cookies
-          });
-
-          const data = await response.json();
-          
-          if (!response.ok) {
-            console.error('Server error:', data);
-            throw new Error(data.error || 'Failed to log time');
-          }
-
-          console.log('Time logged successfully:', data);
-          return data;
-        } catch (error) {
-          console.error('Error logging time:', error);
-          throw error;
+        const data = await response.json();
+        
+        if (!response.ok) {
+          console.error('Server error:', data);
+          throw new Error(data.error || 'Failed to log time');
         }
+
+        return data;
       }
 
       function enterFullScreen() {
@@ -296,23 +334,20 @@
       }
 
       // Event Listeners
-      document.getElementById('startBtn').addEventListener('click', startTimer);
-
-      document.addEventListener('keydown', function(event) {
-        if (event.code === 'Space' && !event.repeat && document.hasFocus()) {
-          event.preventDefault();
-          
-          if (!intervalId && !isPaused) {
-            // Start timer if it's not running
-            startTimer();
-          } else if (intervalId && !isPaused) {
-            // Pause if timer is running
-            pauseTimer();
-          } else if (isPaused) {
-            // Resume if timer is paused
-            resumeTimer();
+      document.addEventListener('DOMContentLoaded', function() {
+        // Add keyboard controls
+        document.addEventListener('keydown', function(e) {
+          if (e.code === 'Space' && document.activeElement.tagName !== 'INPUT') {
+            e.preventDefault();
+            if (!startTime) {
+              startTimer();
+            } else if (isPaused) {
+              resumeTimer();
+            } else {
+              pauseTimer();
+            }
           }
-        }
+        });
       });
 
       // Tasks panel functionality with local storage
@@ -434,39 +469,6 @@
           addTodo();
         }
       });
-
-      async function stopTimer() {
-        if (!startTime) return;
-        
-        const endTime = Date.now();
-        const duration = Math.floor((endTime - startTime) / 1000); // duration in seconds
-        
-        try {
-          console.log('Stopping timer:', {
-            startTime: startTime,
-            endTime: endTime,
-            duration: duration
-          });
-          
-          await logTimeToServer(startTime, endTime, duration);
-          console.log('Time logged successfully');
-        } catch (error) {
-          console.error('Error logging time:', error);
-          alert('Failed to save your time: ' + error.message);
-        } finally {
-          // Reset timer
-          clearInterval(intervalId);
-          intervalId = null;
-          startTime = null;
-          time = 0;
-          updateDisplay();
-          
-          // Update UI
-          if (document.fullscreenElement) {
-            document.exitFullscreen();
-          }
-        }
-      }
     </script>
   </body>
 </html>

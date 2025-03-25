@@ -547,3 +547,17 @@ body {
 .auth-container a:hover {
     text-decoration: underline;
 }
+
+.timer-controls button {
+    margin: 0 5px;
+    padding: 8px 16px;
+    border-radius: 4px;
+    border: none;
+    background-color: #333;
+    color: white;
+    cursor: pointer;
+}
+
+.timer-controls button:hover {
+    background-color: #444;
+}
