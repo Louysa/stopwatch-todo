@@ -8,6 +8,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   </head>
   <body>
+    <div class="user-controls">
+      <span>{{ session['user']['email'] }}</span>
+      <a href="{{ url_for('logout') }}" class="btn">Logout</a>
+    </div>
     <div class="icon-buttons">
       <button id="tasksBtn" class="icon-btn" title="Tasks">
         <i class="fas fa-tasks"></i>
