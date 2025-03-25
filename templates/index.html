@@ -454,6 +454,9 @@
                 if (response.status === 401) {
                     // Handle authentication error
                     console.log('Authentication error, redirecting to login...');
+                    // Clear any local storage or session data
+                    localStorage.clear();
+                    // Redirect to login page
                     window.location.href = data.redirect || '/login';
                     return;
                 }
@@ -484,7 +487,12 @@
             input.value = '';
         } catch (error) {
             console.error('Error adding todo:', error);
-            alert('Failed to add task. Please try again.');
+            if (error.message.includes('Authentication error')) {
+                // Handle authentication error
+                window.location.href = '/login';
+            } else {
+                alert('Failed to add task. Please try again.');
+            }
         } finally {
             // Reset button state
             submitBtn.disabled = false;

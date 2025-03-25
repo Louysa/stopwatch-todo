@@ -38,7 +38,14 @@ def get_authenticated_supabase():
     
     # Set the session if we have one
     if session.get('access_token'):
-        client.auth.set_session(session['access_token'], session.get('refresh_token'))
+        try:
+            client.auth.set_session(session['access_token'], session.get('refresh_token'))
+            print(f"Session set successfully with access token: {session['access_token'][:10]}...")
+        except Exception as e:
+            print(f"Error setting session: {str(e)}")
+            # Clear invalid session
+            session.clear()
+            return None
     
     return client
 
@@ -219,18 +226,26 @@ def create_task():
         # Create task for the current user
         task_data = {
             'user_id': user_id,
-            'text': data['text'],  # Changed back to 'text' to match the database column
+            'text': data['text'],
             'completed': False
         }
         
         # Get an authenticated Supabase client
         current_supabase = get_authenticated_supabase()
+        if not current_supabase:
+            return jsonify({
+                'error': 'Authentication error. Please log in again.',
+                'redirect': url_for('login')
+            }), 401
         
         # Print the task data for debugging
         print(f"Task data being sent to Supabase: {task_data}")
         
         # Try to insert the task
         try:
+            # Set the session before inserting
+            current_supabase.auth.set_session(session['access_token'], session.get('refresh_token'))
+            
             response = current_supabase.table('tasks').insert(task_data).execute()
             print(f"Supabase response: {response}")
             
