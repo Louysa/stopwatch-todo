@@ -26,12 +26,7 @@ def get_supabase():
     """Get a new Supabase client instance"""
     return create_client(
         supabase_url,
-        supabase_key,
-        options={
-            'headers': {
-                'Authorization': f'Bearer {supabase_key}'
-            }
-        }
+        supabase_key
     )
 
 def update_supabase_session(access_token, refresh_token):
