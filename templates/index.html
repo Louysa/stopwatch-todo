@@ -196,23 +196,30 @@
         const endTime = new Date();
         
         try {
-          const response = await fetch('/api/time-logs', {
+          const response = await fetch('/log_time', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-              start_time: startTime.toISOString(),
-              end_time: endTime.toISOString(),
+              startTime: startTime.toISOString(),
+              endTime: endTime.toISOString(),
               duration: time // Actual seconds counted
             })
           });
           
           if (!response.ok) {
-            throw new Error('Failed to log time');
+            const errorData = await response.json();
+            console.error('Server error:', errorData);
+            throw new Error(`Server responded with ${response.status}: ${errorData.error}`);
           }
+
+          const data = await response.json();
+          console.log('Time logged successfully:', data);
+          return data;
         } catch (error) {
-          console.error('Error logging time:', error);
+          console.error('Error details:', error);
+          throw new Error('Failed to log time: ' + error.message);
         }
       }
 
@@ -424,6 +431,28 @@
           addTodo();
         }
       });
+
+      async function stopTimer() {
+        if (!startTime) return;
+        
+        const endTime = Date.now();
+        const duration = Math.floor((endTime - startTime) / 1000); // duration in seconds
+        
+        try {
+          await logTimeToServer(startTime, endTime, duration);
+          console.log('Time logged successfully');
+        } catch (error) {
+          console.error('Error logging time:', error);
+          alert('Failed to save your time. Please try again.');
+        }
+        
+        // Reset timer
+        clearInterval(intervalId);
+        intervalId = null;
+        startTime = null;
+        time = 0;
+        updateDisplay();
+      }
     </script>
   </body>
 </html>

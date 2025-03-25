@@ -77,6 +77,19 @@ def logout():
 def log_time():
     try:
         data = request.json
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+        
+        # Validate required fields
+        required_fields = ["startTime", "endTime", "duration"]
+        for field in required_fields:
+            if field not in data:
+                return jsonify({"error": f"Missing required field: {field}"}), 400
+
+        # Print debugging information
+        print("Received data:", data)
+        print("User ID:", session.get('user', {}).get('id'))
+        
         time_log = {
             "start_time": datetime.fromtimestamp(data["startTime"] / 1000).isoformat(),
             "end_time": datetime.fromtimestamp(data["endTime"] / 1000).isoformat(),
@@ -85,9 +98,20 @@ def log_time():
             "user_id": session['user']['id']
         }
         
+        # Print the data being sent to Supabase
+        print("Sending to Supabase:", time_log)
+        
         result = supabase.table('time_logs').insert(time_log).execute()
-        return jsonify({"success": True})
+        
+        return jsonify({
+            "success": True,
+            "data": result.data
+        })
+    except KeyError as e:
+        print(f"KeyError: {str(e)}")
+        return jsonify({"error": f"Missing key in session or data: {str(e)}"}), 400
     except Exception as e:
+        print(f"Error in log_time: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @app.route("/get_logs")
@@ -120,6 +144,25 @@ def health_check():
             "status": "unhealthy",
             "error": str(e),
             "timestamp": datetime.now().isoformat()
+        }), 500
+
+@app.route("/debug-connection")
+def debug_connection():
+    try:
+        # Test Supabase connection
+        test_query = supabase.table('time_logs').select("count(*)").execute()
+        return jsonify({
+            "status": "connected",
+            "supabase_url_exists": bool(os.environ.get("SUPABASE_URL")),
+            "supabase_key_exists": bool(os.environ.get("SUPABASE_KEY")),
+            "test_query_result": test_query.data
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "error": str(e),
+            "supabase_url_exists": bool(os.environ.get("SUPABASE_URL")),
+            "supabase_key_exists": bool(os.environ.get("SUPABASE_KEY"))
         }), 500
 
 if __name__ == '__main__':
