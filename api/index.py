@@ -158,58 +158,90 @@ def get_logs():
 @app.route('/api/tasks', methods=['GET'])
 def get_tasks():
     try:
-        # Get tasks for the current user
-        response = supabase.table('tasks').select('*').eq('user_id', session.get('user_id')).order('created_at', desc=True).execute()
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+            
+        print(f"Fetching tasks for user: {user_id}")
+        response = supabase.table('tasks').select('*').eq('user_id', user_id).order('created_at', desc=True).execute()
         return jsonify(response.data)
     except Exception as e:
+        print(f"Error in get_tasks: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/tasks', methods=['POST'])
 def create_task():
     try:
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
         data = request.get_json()
         if not data or 'text' not in data:
             return jsonify({'error': 'Task text is required'}), 400
 
+        print(f"Creating task for user {user_id}: {data['text']}")
+        
         # Create task for the current user
         response = supabase.table('tasks').insert({
-            'user_id': session.get('user_id'),
+            'user_id': user_id,
             'text': data['text'],
             'completed': False
         }).execute()
         
+        if not response.data:
+            return jsonify({'error': 'Failed to create task'}), 500
+            
+        print(f"Task created successfully: {response.data[0]}")
         return jsonify(response.data[0])
     except Exception as e:
+        print(f"Error in create_task: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/tasks/<int:task_id>', methods=['PUT'])
 def update_task(task_id):
     try:
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
         data = request.get_json()
         if not data:
             return jsonify({'error': 'No data provided'}), 400
 
+        print(f"Updating task {task_id} for user {user_id}")
+        
         # Update task for the current user
-        response = supabase.table('tasks').update(data).eq('id', task_id).eq('user_id', session.get('user_id')).execute()
+        response = supabase.table('tasks').update(data).eq('id', task_id).eq('user_id', user_id).execute()
         
         if not response.data:
             return jsonify({'error': 'Task not found'}), 404
             
+        print(f"Task updated successfully: {response.data[0]}")
         return jsonify(response.data[0])
     except Exception as e:
+        print(f"Error in update_task: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/tasks/<int:task_id>', methods=['DELETE'])
 def delete_task(task_id):
     try:
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'User not authenticated'}), 401
+
+        print(f"Deleting task {task_id} for user {user_id}")
+        
         # Delete task for the current user
-        response = supabase.table('tasks').delete().eq('id', task_id).eq('user_id', session.get('user_id')).execute()
+        response = supabase.table('tasks').delete().eq('id', task_id).eq('user_id', user_id).execute()
         
         if not response.data:
             return jsonify({'error': 'Task not found'}), 404
             
+        print(f"Task deleted successfully")
         return jsonify({'message': 'Task deleted successfully'})
     except Exception as e:
+        print(f"Error in delete_task: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':

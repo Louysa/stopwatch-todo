@@ -427,7 +427,7 @@
       const addTodoBtn = document.getElementById('addTodo');
       const todoList = document.getElementById('todoList');
 
-      // Update the addTodo function with the correct endpoint
+      // Update the addTodo function
       async function addTodo() {
         const input = document.getElementById('todoInput');
         const text = input.value.trim();
@@ -442,13 +442,15 @@
               body: JSON.stringify({ text })
             });
             
+            const data = await response.json();
+            
             if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
+              throw new Error(data.error || 'Failed to add task');
             }
             
-            const data = await response.json();
             const todoList = document.getElementById('todoList');
             const li = document.createElement('li');
+            li.dataset.id = data.id;
             li.innerHTML = `
               <div class="task-content">
                 <input type="checkbox" class="task-checkbox" onchange="toggleTodo(${data.id}, this.checked)">
@@ -462,11 +464,63 @@
             input.value = '';
           } catch (error) {
             console.error('Error adding task:', error);
-            alert('Failed to add task. Please try again.');
+            alert(error.message || 'Failed to add task. Please try again.');
           }
         }
       }
 
+      // Add toggleTodo function
+      async function toggleTodo(taskId, completed) {
+        try {
+          const response = await fetch(`/api/tasks/${taskId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ completed })
+          });
+          
+          const data = await response.json();
+          
+          if (!response.ok) {
+            throw new Error(data.error || 'Failed to update task');
+          }
+          
+          const taskElement = document.querySelector(`li[data-id="${taskId}"]`);
+          if (taskElement) {
+            const taskText = taskElement.querySelector('.task-text');
+            taskText.classList.toggle('completed', completed);
+          }
+        } catch (error) {
+          console.error('Error toggling task:', error);
+          alert(error.message || 'Failed to update task. Please try again.');
+        }
+      }
+
+      // Add deleteTodo function
+      async function deleteTodo(taskId) {
+        try {
+          const response = await fetch(`/api/tasks/${taskId}`, {
+            method: 'DELETE'
+          });
+          
+          const data = await response.json();
+          
+          if (!response.ok) {
+            throw new Error(data.error || 'Failed to delete task');
+          }
+          
+          const taskElement = document.querySelector(`li[data-id="${taskId}"]`);
+          if (taskElement) {
+            taskElement.remove();
+          }
+        } catch (error) {
+          console.error('Error deleting task:', error);
+          alert(error.message || 'Failed to delete task. Please try again.');
+        }
+      }
+
+      // Load tasks when the page loads
       function setTaskListeners(li){
         const checkbox = li.querySelector('.task-checkbox');
         const deleteBtn = li.querySelector('.delete-btn');
