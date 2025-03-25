@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, make_response, redirect, url_for, session
+from flask import Flask, render_template, request, jsonify, make_response, redirect, url_for, session, flash
 from supabase import create_client
 from datetime import datetime
 import os
@@ -40,20 +40,26 @@ def login():
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
+        
         try:
             response = supabase.auth.sign_in_with_password({
-                "email": email,
-                "password": password
+                'email': email,
+                'password': password
             })
-            # Store user session
-            session['user_id'] = response.user.id
-            return redirect(url_for('index'))
+            
+            if response.user:
+                # Store user ID in session
+                session['user_id'] = response.user.id
+                session['email'] = response.user.email
+                print(f"User logged in successfully: {response.user.id}")
+                return redirect(url_for('index'))
+            else:
+                flash('Invalid email or password')
         except Exception as e:
-            return render_template('login.html', 
-                error="Invalid credentials",
-                title="Gothic Login"
-            )
-    return render_template('login.html', title="Gothic Login")
+            print(f"Login error: {str(e)}")
+            flash('Invalid email or password')
+    
+    return render_template('login.html')
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -183,20 +189,32 @@ def create_task():
         print(f"Creating task for user {user_id}: {data['text']}")
         
         # Create task for the current user
-        response = supabase.table('tasks').insert({
+        task_data = {
             'user_id': user_id,
             'text': data['text'],
             'completed': False
-        }).execute()
+        }
+        
+        # Print the task data for debugging
+        print(f"Task data being sent to Supabase: {task_data}")
+        
+        response = supabase.table('tasks').insert(task_data).execute()
         
         if not response.data:
+            print("No data returned from Supabase insert")
             return jsonify({'error': 'Failed to create task'}), 500
             
         print(f"Task created successfully: {response.data[0]}")
         return jsonify(response.data[0])
     except Exception as e:
         print(f"Error in create_task: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        # Return more detailed error information
+        return jsonify({
+            'error': str(e),
+            'details': getattr(e, 'details', None),
+            'hint': getattr(e, 'hint', None),
+            'code': getattr(e, 'code', None)
+        }), 500
 
 @app.route('/api/tasks/<int:task_id>', methods=['PUT'])
 def update_task(task_id):

@@ -434,6 +434,13 @@
         
         if (text) {
           try {
+            // Show loading state
+            const submitBtn = document.querySelector('.submit-btn');
+            if (submitBtn) {
+              submitBtn.disabled = true;
+              submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            }
+
             const response = await fetch('/api/tasks', {
               method: 'POST',
               headers: {
@@ -445,6 +452,13 @@
             const data = await response.json();
             
             if (!response.ok) {
+              // Handle authentication error
+              if (response.status === 401) {
+                window.location.href = '/login';
+                return;
+              }
+              
+              // Handle other errors
               throw new Error(data.error || 'Failed to add task');
             }
             
@@ -464,7 +478,16 @@
             input.value = '';
           } catch (error) {
             console.error('Error adding task:', error);
-            alert(error.message || 'Failed to add task. Please try again.');
+            // Show more detailed error message
+            const errorMessage = error.message || 'Failed to add task. Please try again.';
+            alert(errorMessage);
+          } finally {
+            // Reset button state
+            const submitBtn = document.querySelector('.submit-btn');
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = '<i class="fas fa-plus"></i>';
+            }
           }
         }
       }
