@@ -219,7 +219,7 @@ def create_task():
         # Create task for the current user
         task_data = {
             'user_id': user_id,
-            'text': data['text'],
+            'task': data['text'],  # Changed from 'text' to 'task' to match the table
             'completed': False
         }
         
