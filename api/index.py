@@ -118,11 +118,12 @@ def get_logs():
         result = supabase.table('time_logs')\
             .select("*")\
             .eq('device_id', device_id)\
-            .order('date', desc=True)\
+            .order('start_time', desc=True)\
             .execute()
         
         return jsonify(result.data)
     except Exception as e:
+        print(f"Error in get_logs: {str(e)}")  # Debug print
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':

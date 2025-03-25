@@ -122,7 +122,32 @@
       const logsPopup = document.getElementById('logsPopup');
       const closeButtons = document.querySelectorAll('.close-popup');
 
-      logsBtn.addEventListener('click', () => {
+      async function loadTimeLogs() {
+        try {
+          const response = await fetch('/get_logs');
+          const logs = await response.json();
+          
+          const timeLogsList = document.querySelector('.time-logs-list');
+          timeLogsList.innerHTML = ''; // Clear existing logs
+          
+          logs.forEach(log => {
+            const minutes = Math.floor(log.duration / 60);
+            const seconds = log.duration % 60;
+            const logItem = document.createElement('div');
+            logItem.className = 'time-log-item';
+            logItem.innerHTML = `
+              <span class="log-date">${new Date(log.start_time).toLocaleDateString()}</span>
+              <span class="log-duration">${minutes}m ${seconds}s</span>
+            `;
+            timeLogsList.appendChild(logItem);
+          });
+        } catch (error) {
+          console.error('Error loading time logs:', error);
+        }
+      }
+
+      logsBtn.addEventListener('click', async () => {
+        await loadTimeLogs();
         logsPopup.classList.add('show');
       });
 
