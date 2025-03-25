@@ -432,63 +432,54 @@
         const input = document.getElementById('todoInput');
         const text = input.value.trim();
         
-        if (text) {
-          try {
-            // Show loading state
-            const submitBtn = document.querySelector('.submit-btn');
-            if (submitBtn) {
-              submitBtn.disabled = true;
-              submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-            }
-
+        if (!text) return;
+        
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        
+        try {
             const response = await fetch('/api/tasks', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ text })
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ text })
             });
             
             const data = await response.json();
             
             if (!response.ok) {
-              // Handle authentication error
-              if (response.status === 401) {
-                window.location.href = '/login';
-                return;
-              }
-              
-              // Handle other errors
-              throw new Error(data.error || 'Failed to add task');
+                if (response.status === 401) {
+                    // Handle authentication error
+                    console.log('Authentication error, redirecting to login...');
+                    window.location.href = data.redirect || '/login';
+                    return;
+                }
+                throw new Error(data.error || 'Failed to add task');
             }
             
+            // Add the new todo to the list
             const todoList = document.getElementById('todoList');
-            const li = document.createElement('li');
-            li.dataset.id = data.id;
-            li.innerHTML = `
-              <div class="task-content">
-                <input type="checkbox" class="task-checkbox" onchange="toggleTodo(${data.id}, this.checked)">
-                <span class="task-text">${text}</span>
-              </div>
-              <button class="delete-btn" onclick="deleteTodo(${data.id})">
-                <i class="fas fa-times"></i>
-              </button>
+            const todoItem = document.createElement('div');
+            todoItem.className = 'todo-item';
+            todoItem.innerHTML = `
+                <input type="checkbox" class="todo-checkbox" onchange="toggleTodo(${data.id}, this.checked)">
+                <span class="todo-text">${text}</span>
+                <button class="delete-btn" onclick="deleteTodo(${data.id})">
+                    <i class="fas fa-times"></i>
+                </button>
             `;
-            todoList.insertBefore(li, todoList.firstChild);
+            todoList.insertBefore(todoItem, todoList.firstChild);
+            
+            // Clear input
             input.value = '';
-          } catch (error) {
-            console.error('Error adding task:', error);
-            // Show more detailed error message
-            const errorMessage = error.message || 'Failed to add task. Please try again.';
-            alert(errorMessage);
-          } finally {
-            // Reset button state
-            const submitBtn = document.querySelector('.submit-btn');
-            if (submitBtn) {
-              submitBtn.disabled = false;
-              submitBtn.innerHTML = '<i class="fas fa-plus"></i>';
-            }
-          }
+        } catch (error) {
+            console.error('Error adding todo:', error);
+            alert('Failed to add task. Please try again.');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-plus"></i>';
         }
       }
 

@@ -23,17 +23,17 @@ if not supabase_url or not supabase_key:
     print("Warning: Supabase credentials are not set!")
 
 def get_supabase():
-    """Get a new Supabase client instance"""
-    return create_client(
+    """Get a new Supabase client instance with current session"""
+    client = create_client(
         supabase_url,
         supabase_key
     )
-
-def update_supabase_session(access_token, refresh_token):
-    """Update the Supabase client with user session"""
-    supabase = get_supabase()
-    supabase.auth.set_session(access_token, refresh_token)
-    return supabase
+    
+    # Set the session if we have one
+    if session.get('access_token'):
+        client.auth.set_session(session['access_token'], session.get('refresh_token'))
+    
+    return client
 
 # Initialize Supabase client
 supabase = get_supabase()
@@ -219,11 +219,6 @@ def create_task():
         # Get a fresh Supabase client with the current session
         current_supabase = get_supabase()
         
-        # Set the session with the access token
-        if session.get('access_token'):
-            current_supabase.auth.set_session(session['access_token'], session.get('refresh_token'))
-            print(f"Session set with access token: {session['access_token'][:10]}...")
-        
         # Print the task data for debugging
         print(f"Task data being sent to Supabase: {task_data}")
         
@@ -242,10 +237,13 @@ def create_task():
             print(f"Supabase insert error: {str(e)}")
             # Check if it's an authentication error
             if hasattr(e, 'code') and e.code == '42501':
+                # Clear session and redirect to login
+                session.clear()
                 return jsonify({
-                    'error': 'Authentication error. Please try logging in again.',
+                    'error': 'Authentication error. Please log in again.',
                     'code': e.code,
-                    'message': str(e)
+                    'message': str(e),
+                    'redirect': url_for('login')
                 }), 401
             raise e
             
