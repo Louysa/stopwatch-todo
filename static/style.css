@@ -612,3 +612,43 @@ body {
     text-align: center;
     font-family: 'Crimson Text', serif;
 }
+
+.gothic-input {
+    background: rgba(0, 0, 0, 0.7);
+    border: 2px solid #8b0000;
+    color: #fff;
+    padding: 10px 15px;
+    font-family: 'Crimson Text', serif;
+    font-size: 1.1em;
+    width: 100%;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(139, 0, 0, 0.3);
+    transition: all 0.3s ease;
+}
+
+.gothic-input:focus {
+    outline: none;
+    border-color: #ff0000;
+    box-shadow: 0 0 15px rgba(255, 0, 0, 0.4);
+}
+
+.gothic-input::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.input-group .gothic-btn {
+    width: 100%;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
