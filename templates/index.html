@@ -110,10 +110,12 @@
     </div>
 
     <script>
-      let time = 0;
-      let intervalId = null;
       let startTime = null;
+      let intervalId = null;
+      let time = 0;
       let isPaused = false;
+      let activeTime = 0;
+      let lastResumeTime = null;
       
       const timeDisplay = document.querySelector('.time-display');
       const startBtn = document.getElementById('startBtn');
@@ -146,7 +148,7 @@
         const hours = Math.floor(time / 3600);
         const minutes = Math.floor((time % 3600) / 60);
         const seconds = time % 60;
-        timeDisplay.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        timeDisplay.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
       }
 
       function enterFullScreen() {
@@ -187,13 +189,13 @@
         
         stopBtn.addEventListener('click', () => {
           if (!isPaused) {
-            // Pause timer
+            // Pause display
             clearInterval(intervalId);
             intervalId = null;
             isPaused = true;
             stopBtn.innerHTML = '<i class="fas fa-play"></i><span>Resume</span>';
           } else {
-            // Resume timer
+            // Resume display
             intervalId = setInterval(() => {
               time++;
               updateDisplay();
@@ -242,24 +244,32 @@
       }
 
       async function logTimeToServer() {
-        if (startTime) {
-          const endTime = new Date();
-          try {
-            await fetch('/api/time-logs', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                start_time: startTime.toISOString(),
-                end_time: endTime.toISOString()
-              })
+        if (!startTime) return;
+        
+        const endTime = new Date();
+        
+        // If timer is running, add the current active period
+        if (!isPaused && lastResumeTime) {
+            activeTime += (endTime - lastResumeTime) / 1000;
+        }
+        
+        // Round to nearest second
+        const totalActiveTime = Math.floor(activeTime);
+        
+        try {
+            const response = await fetch('/api/time-logs', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    start_time: startTime.toISOString(),
+                    end_time: endTime.toISOString(),
+                    duration: totalActiveTime
+                })
             });
-            // Reload the page to show updated logs
-            window.location.reload();
-          } catch (error) {
+        } catch (error) {
             console.error('Error logging time:', error);
-          }
         }
       }
       
@@ -267,6 +277,9 @@
       startBtn.addEventListener('click', () => {
         if (!intervalId) {
           startTime = new Date();
+          lastResumeTime = startTime;
+          activeTime = 0;
+          time = 0;
           intervalId = setInterval(() => {
             time++;
             updateDisplay();
@@ -397,22 +410,22 @@
 
       // Update the keyboard event listener
       document.addEventListener('keydown', function(event) {
-        // Only handle space key when the window/tab is focused
         if (event.code === 'Space' && !event.repeat && document.hasFocus()) {
-          event.preventDefault(); // Prevent space from scrolling
+          event.preventDefault();
           
           if (!intervalId) {
             // Start timer
             startTime = new Date();
+            time = 0;
             intervalId = setInterval(() => {
               time++;
               updateDisplay();
             }, 1000);
             enterFullScreen();
           } else {
-            // Just pause/resume timer, don't end it
+            // Just pause/resume the display, but keep tracking total time
             if (isPaused) {
-              // Resume
+              // Resume display
               intervalId = setInterval(() => {
                 time++;
                 updateDisplay();
@@ -420,7 +433,7 @@
               isPaused = false;
               document.getElementById('stopBtn').innerHTML = '<i class="fas fa-pause"></i><span>Stop</span>';
             } else {
-              // Pause
+              // Pause display
               clearInterval(intervalId);
               intervalId = null;
               isPaused = true;
