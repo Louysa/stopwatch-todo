@@ -30,11 +30,10 @@
             <i class="fas fa-times"></i>
           </button>
         </div>
-        <div class="todo-input">
+        <div class="input-group">
           <input type="text" id="todoInput" placeholder="Enter a new task...">
-          <button id="addTodo" class="gothic-btn">
+          <button id="submitBtn" class="submit-btn" onclick="addTodo()">
             <i class="fas fa-plus"></i>
-            <span>Add</span>
           </button>
         </div>
         <ul id="todoList" class="todo-list">
@@ -424,21 +423,22 @@
 
       // Todo list functionality
       const todoInput = document.getElementById('todoInput');
-      const addTodoBtn = document.getElementById('addTodo');
+      const addTodoBtn = document.getElementById('submitBtn');
       const todoList = document.getElementById('todoList');
 
       // Update the addTodo function
       async function addTodo() {
         const input = document.getElementById('todoInput');
+        const submitBtn = document.getElementById('submitBtn');
         const text = input.value.trim();
         
         if (!text) return;
         
-        const submitBtn = document.getElementById('submitBtn');
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        
         try {
+            // Disable button and show loading state
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            
             const response = await fetch('/api/tasks', {
                 method: 'POST',
                 headers: {
@@ -478,6 +478,7 @@
             console.error('Error adding todo:', error);
             alert('Failed to add task. Please try again.');
         } finally {
+            // Reset button state
             submitBtn.disabled = false;
             submitBtn.innerHTML = '<i class="fas fa-plus"></i>';
         }
