@@ -427,7 +427,20 @@
       const addTodoBtn = document.getElementById('submitBtn');
       const todoList = document.getElementById('todoList');
 
-      // Update the addTodo function
+      // Add event listener for Enter key
+      todoInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault(); // Prevent form submission
+          addTodo();
+        }
+      });
+
+      // Add event listener for button click
+      addTodoBtn.addEventListener('click', function(e) {
+        e.preventDefault(); // Prevent form submission
+        addTodo();
+      });
+
       async function addTodo() {
         const input = document.getElementById('todoInput');
         const submitBtn = document.getElementById('submitBtn');
