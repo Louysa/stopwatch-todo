@@ -28,10 +28,8 @@ def get_supabase():
         supabase_url,
         supabase_key,
         options={
-            'auth': {
-                'autoRefreshToken': True,
-                'persistSession': True,
-                'detectSessionInUrl': True
+            'headers': {
+                'Authorization': f'Bearer {supabase_key}'
             }
         }
     )
