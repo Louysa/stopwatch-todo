@@ -21,7 +21,23 @@ supabase_key = os.environ.get("SUPABASE_KEY")
 if not supabase_url or not supabase_key:
     print("Warning: Supabase credentials are not set!")
 
-supabase = create_client(supabase_url, supabase_key)
+# Initialize Supabase client with session handling
+supabase = create_client(
+    supabase_url,
+    supabase_key,
+    options={
+        'auth': {
+            'autoRefreshToken': True,
+            'persistSession': True,
+            'detectSessionInUrl': True
+        }
+    }
+)
+
+# Function to update Supabase client with user session
+def update_supabase_session(access_token, refresh_token):
+    global supabase
+    supabase.auth.set_session(access_token, refresh_token)
 
 @app.route('/')
 def index():
@@ -51,7 +67,12 @@ def login():
                 # Store user ID in session
                 session['user_id'] = response.user.id
                 session['email'] = response.user.email
+                session['access_token'] = response.session.access_token
                 print(f"User logged in successfully: {response.user.id}")
+                
+                # Set up Supabase client with the user's session
+                update_supabase_session(response.session.access_token, response.session.refresh_token)
+                
                 return redirect(url_for('index'))
             else:
                 flash('Invalid email or password')
@@ -180,6 +201,7 @@ def create_task():
     try:
         user_id = session.get('user_id')
         if not user_id:
+            print("No user_id in session")
             return jsonify({'error': 'User not authenticated'}), 401
 
         data = request.get_json()
@@ -198,6 +220,13 @@ def create_task():
         # Print the task data for debugging
         print(f"Task data being sent to Supabase: {task_data}")
         
+        # Get the current user's session from Supabase
+        try:
+            user = supabase.auth.get_user()
+            print(f"Current Supabase user: {user}")
+        except Exception as e:
+            print(f"Error getting Supabase user: {str(e)}")
+        
         response = supabase.table('tasks').insert(task_data).execute()
         
         if not response.data:
@@ -213,7 +242,8 @@ def create_task():
             'error': str(e),
             'details': getattr(e, 'details', None),
             'hint': getattr(e, 'hint', None),
-            'code': getattr(e, 'code', None)
+            'code': getattr(e, 'code', None),
+            'session_user_id': session.get('user_id')
         }), 500
 
 @app.route('/api/tasks/<int:task_id>', methods=['PUT'])
