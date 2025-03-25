@@ -3,6 +3,7 @@ from supabase import create_client
 from datetime import datetime
 import os
 import uuid
+from functools import wraps
 
 app = Flask(__name__,
     template_folder='../templates',
@@ -21,23 +22,28 @@ supabase_key = os.environ.get("SUPABASE_KEY")
 if not supabase_url or not supabase_key:
     print("Warning: Supabase credentials are not set!")
 
-# Initialize Supabase client with session handling
-supabase = create_client(
-    supabase_url,
-    supabase_key,
-    options={
-        'auth': {
-            'autoRefreshToken': True,
-            'persistSession': True,
-            'detectSessionInUrl': True
+def get_supabase():
+    """Get a new Supabase client instance"""
+    return create_client(
+        supabase_url,
+        supabase_key,
+        options={
+            'auth': {
+                'autoRefreshToken': True,
+                'persistSession': True,
+                'detectSessionInUrl': True
+            }
         }
-    }
-)
+    )
 
-# Function to update Supabase client with user session
 def update_supabase_session(access_token, refresh_token):
-    global supabase
+    """Update the Supabase client with user session"""
+    supabase = get_supabase()
     supabase.auth.set_session(access_token, refresh_token)
+    return supabase
+
+# Initialize Supabase client
+supabase = get_supabase()
 
 @app.route('/')
 def index():
@@ -58,20 +64,20 @@ def login():
         password = request.form.get('password')
         
         try:
-            response = supabase.auth.sign_in_with_password({
+            # Get a fresh Supabase client
+            current_supabase = get_supabase()
+            response = current_supabase.auth.sign_in_with_password({
                 'email': email,
                 'password': password
             })
             
             if response.user:
-                # Store user ID in session
+                # Store user ID and session in session
                 session['user_id'] = response.user.id
                 session['email'] = response.user.email
                 session['access_token'] = response.session.access_token
+                session['refresh_token'] = response.session.refresh_token
                 print(f"User logged in successfully: {response.user.id}")
-                
-                # Set up Supabase client with the user's session
-                update_supabase_session(response.session.access_token, response.session.refresh_token)
                 
                 return redirect(url_for('index'))
             else:
@@ -217,17 +223,15 @@ def create_task():
             'completed': False
         }
         
+        # Get a fresh Supabase client with the current session
+        current_supabase = get_supabase()
+        if session.get('access_token'):
+            current_supabase.auth.set_session(session['access_token'], session.get('refresh_token'))
+        
         # Print the task data for debugging
         print(f"Task data being sent to Supabase: {task_data}")
         
-        # Get the current user's session from Supabase
-        try:
-            user = supabase.auth.get_user()
-            print(f"Current Supabase user: {user}")
-        except Exception as e:
-            print(f"Error getting Supabase user: {str(e)}")
-        
-        response = supabase.table('tasks').insert(task_data).execute()
+        response = current_supabase.table('tasks').insert(task_data).execute()
         
         if not response.data:
             print("No data returned from Supabase insert")
