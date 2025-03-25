@@ -243,9 +243,7 @@ def create_task():
         
         # Try to insert the task
         try:
-            # Set the session before inserting
-            current_supabase.auth.set_session(session['access_token'], session.get('refresh_token'))
-            
+            # Remove duplicate session setting since it's already done in get_authenticated_supabase()
             response = current_supabase.table('tasks').insert(task_data).execute()
             print(f"Supabase response: {response}")
             
