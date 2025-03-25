@@ -42,7 +42,7 @@
           <li data-id="{{ task.id }}">
             <div class="task-content">
               <input type="checkbox" class="task-checkbox" {% if task.completed %}checked{% endif %}>
-              <span class="task-text {% if task.completed %}completed{% endif %}">{{ task.task }}</span>
+              <span class="task-text {% if task.completed %}completed{% endif %}">{{ task.text }}</span>
             </div>
             <button class="delete-btn">
               <i class="fas fa-times"></i>
