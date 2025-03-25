@@ -230,21 +230,11 @@ def create_task():
             'completed': False
         }
         
-        # Get an authenticated Supabase client
-        current_supabase = get_authenticated_supabase()
-        if not current_supabase:
-            return jsonify({
-                'error': 'Authentication error. Please log in again.',
-                'redirect': url_for('login')
-            }), 401
-        
-        # Print the task data for debugging
+        # Use the global supabase client since RLS is disabled
         print(f"Task data being sent to Supabase: {task_data}")
         
-        # Try to insert the task
         try:
-            # Remove duplicate session setting since it's already done in get_authenticated_supabase()
-            response = current_supabase.table('tasks').insert(task_data).execute()
+            response = supabase.table('tasks').insert(task_data).execute()
             print(f"Supabase response: {response}")
             
             if not response.data:
@@ -255,28 +245,15 @@ def create_task():
             return jsonify(response.data[0])
         except Exception as e:
             print(f"Supabase insert error: {str(e)}")
-            # Check if it's an authentication error
-            if hasattr(e, 'code') and e.code == '42501':
-                # Clear session and redirect to login
-                session.clear()
-                return jsonify({
-                    'error': 'Authentication error. Please log in again.',
-                    'code': e.code,
-                    'message': str(e),
-                    'redirect': url_for('login')
-                }), 401
             raise e
             
     except Exception as e:
         print(f"Error in create_task: {str(e)}")
-        # Return more detailed error information
         return jsonify({
             'error': str(e),
             'details': getattr(e, 'details', None),
             'hint': getattr(e, 'hint', None),
-            'code': getattr(e, 'code', None),
-            'session_user_id': session.get('user_id'),
-            'has_access_token': bool(session.get('access_token'))
+            'code': getattr(e, 'code', None)
         }), 500
 
 @app.route('/api/tasks/<int:task_id>', methods=['PUT'])
