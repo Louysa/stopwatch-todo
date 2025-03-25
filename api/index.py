@@ -23,7 +23,14 @@ if not supabase_url or not supabase_key:
     print("Warning: Supabase credentials are not set!")
 
 def get_supabase():
-    """Get a new Supabase client instance with current session"""
+    """Get a new Supabase client instance"""
+    return create_client(
+        supabase_url,
+        supabase_key
+    )
+
+def get_authenticated_supabase():
+    """Get a Supabase client instance with current session"""
     client = create_client(
         supabase_url,
         supabase_key
@@ -35,7 +42,7 @@ def get_supabase():
     
     return client
 
-# Initialize Supabase client
+# Initialize base Supabase client without session
 supabase = get_supabase()
 
 @app.route('/')
@@ -216,8 +223,8 @@ def create_task():
             'completed': False
         }
         
-        # Get a fresh Supabase client with the current session
-        current_supabase = get_supabase()
+        # Get an authenticated Supabase client
+        current_supabase = get_authenticated_supabase()
         
         # Print the task data for debugging
         print(f"Task data being sent to Supabase: {task_data}")
