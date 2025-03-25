@@ -177,21 +177,7 @@
         }
       }
 
-      function endTimer() {
-        if (intervalId || isPaused) {
-          clearInterval(intervalId);
-          intervalId = null;
-          logTimeToServer().then(() => {
-            exitFullScreen();
-          });
-        }
-      }
-
-      async function logTimeToServer() {
-        if (!startTime) return;
-        
-        const endTime = new Date();
-        
+      async function logTimeToServer(startTime, endTime, duration) {
         try {
           const response = await fetch('/log_time', {
             method: 'POST',
@@ -199,18 +185,26 @@
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              startTime: startTime.toISOString(),
-              endTime: endTime.toISOString(),
-              duration: time // Actual seconds counted
+              startTime: startTime,
+              endTime: endTime,
+              duration: duration
             })
           });
-          
+
           const data = await response.json();
-          if (!data.success) {
-            throw new Error('Failed to log time');
+          
+          if (!response.ok) {
+            throw new Error(data.error || 'Failed to log time');
           }
+
+          if (!data.success) {
+            throw new Error(data.error || 'Failed to log time');
+          }
+
+          console.log('Time logged successfully:', data);
         } catch (error) {
           console.error('Error logging time:', error);
+          throw error;
         }
       }
 
@@ -422,6 +416,22 @@
           addTodo();
         }
       });
+
+      // Update your timer stop function
+      async function stopTimer() {
+        if (intervalId) {
+          clearInterval(intervalId);
+          const endTime = Date.now();
+          try {
+            await logTimeToServer(startTime, endTime, time);
+            // Only reset after successful logging
+            resetTimer();
+          } catch (error) {
+            alert('Failed to save your time. Please try again.');
+            // Maybe keep the timer state so they can try saving again
+          }
+        }
+      }
     </script>
   </body>
 </html>

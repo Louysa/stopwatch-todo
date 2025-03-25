@@ -13,6 +13,11 @@ app = Flask(__name__,
 # Supabase configuration
 supabase_url = os.environ.get("SUPABASE_URL")
 supabase_key = os.environ.get("SUPABASE_KEY")
+
+# Add error checking for Supabase credentials
+if not supabase_url or not supabase_key:
+    print("Warning: Supabase credentials are not set!")
+
 supabase = create_client(supabase_url, supabase_key)
 
 @app.route('/')
@@ -78,7 +83,13 @@ def logout():
 @app.route("/log_time", methods=["POST"])
 def log_time():
     try:
+        if not request.is_json:
+            return jsonify({"error": "Invalid request format"}), 400
+
         data = request.json
+        if not all(key in data for key in ["startTime", "endTime", "duration"]):
+            return jsonify({"error": "Missing required fields"}), 400
+
         device_id = request.cookies.get('device_id', str(uuid.uuid4()))
         
         time_log = {
@@ -89,9 +100,12 @@ def log_time():
             "device_id": device_id
         }
         
+        print(f"Attempting to log time: {time_log}")  # Debug print
+        
         result = supabase.table('time_logs').insert(time_log).execute()
-        return jsonify({"success": True, "message": "Time logged in the shadows"})
+        return jsonify({"success": True, "data": result.data})
     except Exception as e:
+        print(f"Error in log_time: {str(e)}")  # Debug print
         return jsonify({"error": str(e)}), 500
 
 @app.route("/get_logs")
