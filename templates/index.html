@@ -113,6 +113,7 @@
       let time = 0;
       let intervalId = null;
       let startTime = null;
+      let isPaused = false;
       
       const timeDisplay = document.querySelector('.time-display');
       const startBtn = document.getElementById('startBtn');
@@ -154,15 +155,18 @@
         startBtn.style.display = 'none';
         timeDisplay.classList.add('fullscreen-timer');
         
-        // Request browser fullscreen
-        if (document.documentElement.requestFullscreen) {
-          document.documentElement.requestFullscreen().catch(err => {
-            console.log('Fullscreen request failed:', err);
-          });
-        } else if (document.documentElement.webkitRequestFullscreen) {
-          document.documentElement.webkitRequestFullscreen().catch(err => {
-            console.log('Fullscreen request failed:', err);
-          });
+        try {
+          if (document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen().catch(err => {
+              console.log('Fullscreen request failed:', err);
+            });
+          } else if (document.documentElement.webkitRequestFullscreen) {
+            document.documentElement.webkitRequestFullscreen().catch(err => {
+              console.log('Fullscreen request failed:', err);
+            });
+          }
+        } catch (err) {
+          console.log('Fullscreen error:', err);
         }
         
         // Create and show stop and reset buttons
@@ -182,15 +186,19 @@
         controls.appendChild(resetBtn);
         
         stopBtn.addEventListener('click', () => {
-          if (intervalId) {
+          if (!isPaused) {
+            // Pause timer
             clearInterval(intervalId);
             intervalId = null;
+            isPaused = true;
             stopBtn.innerHTML = '<i class="fas fa-play"></i><span>Resume</span>';
           } else {
+            // Resume timer
             intervalId = setInterval(() => {
               time++;
               updateDisplay();
             }, 1000);
+            isPaused = false;
             stopBtn.innerHTML = '<i class="fas fa-pause"></i><span>Stop</span>';
           }
         });
@@ -198,6 +206,7 @@
         resetBtn.addEventListener('click', () => {
           clearInterval(intervalId);
           intervalId = null;
+          isPaused = false;
           logTimeToServer().then(() => {
             exitFullScreen();
           });
@@ -205,28 +214,31 @@
       }
 
       function exitFullScreen() {
-        // Exit browser fullscreen
-        if (document.exitFullscreen) {
-          document.exitFullscreen().catch(err => {
-            console.log('Exit fullscreen failed:', err);
-          });
-        } else if (document.webkitExitFullscreen) {
-          document.webkitExitFullscreen().catch(err => {
-            console.log('Exit fullscreen failed:', err);
-          });
+        try {
+          if (document.exitFullscreen) {
+            document.exitFullscreen().catch(err => {
+              console.log('Exit fullscreen failed:', err);
+            });
+          } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen().catch(err => {
+              console.log('Exit fullscreen failed:', err);
+            });
+          }
+        } catch (err) {
+          console.log('Exit fullscreen error:', err);
         }
         
-        // Reset container
         container.classList.remove('fullscreen');
         title.style.display = 'block';
         startBtn.style.display = 'block';
         timeDisplay.classList.remove('fullscreen-timer');
         
-        // Remove stop and reset buttons
         const stopBtn = document.getElementById('stopBtn');
         const resetBtn = document.getElementById('resetBtn');
         if (stopBtn) stopBtn.remove();
         if (resetBtn) resetBtn.remove();
+        
+        isPaused = false;
       }
 
       async function logTimeToServer() {
@@ -383,9 +395,10 @@
         }
       });
 
-      // Update the space key event listener
+      // Update the keyboard event listener
       document.addEventListener('keydown', function(event) {
-        if (event.code === 'Space' && !event.repeat) {
+        // Only handle space key when the window/tab is focused
+        if (event.code === 'Space' && !event.repeat && document.hasFocus()) {
           event.preventDefault(); // Prevent space from scrolling
           
           if (!intervalId) {
@@ -397,12 +410,22 @@
             }, 1000);
             enterFullScreen();
           } else {
-            // Stop timer
-            clearInterval(intervalId);
-            intervalId = null;
-            logTimeToServer().then(() => {
-              exitFullScreen();
-            });
+            // Just pause/resume timer, don't end it
+            if (isPaused) {
+              // Resume
+              intervalId = setInterval(() => {
+                time++;
+                updateDisplay();
+              }, 1000);
+              isPaused = false;
+              document.getElementById('stopBtn').innerHTML = '<i class="fas fa-pause"></i><span>Stop</span>';
+            } else {
+              // Pause
+              clearInterval(intervalId);
+              intervalId = null;
+              isPaused = true;
+              document.getElementById('stopBtn').innerHTML = '<i class="fas fa-play"></i><span>Resume</span>';
+            }
           }
         }
       });
